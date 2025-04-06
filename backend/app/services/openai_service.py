@@ -1,7 +1,7 @@
 import os
 import base64
-from typing import Dict, Optional, List
-from openai import OpenAI, AsyncOpenAI
+from typing import Dict, List
+from openai import AsyncOpenAI
 import dotenv
 import json
 from pydantic import BaseModel
