@@ -1,23 +1,46 @@
+import { ProductCard } from "@/components/ProductCard";
 import { FashionRecommendationResponse } from "@/services/fashionService";
+import { getSearchResults } from "@/services/searchService";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { Tabs, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 
 const categories = [ "Tops", "Bottoms", "Accessories", "Shoes" ];
 
 export default function ResultsPage() {
   const router = useRouter();
   const [recommendation, setRecommendation] = useState<FashionRecommendationResponse | null>(null);
-  const [activeCategory, setActiveCategory] = useState<string>("");
+  const [activeCategory, setActiveCategory] = useState<string>("Tops");
   const [isLoading, setIsLoading] = useState(true);
+  const [categoryResults, setCategoryResults] = useState<Record<string, any>>({});
 
   useEffect(() => {
     const resultsData = router.query.results;
     if (resultsData) {
       const parsedResults = JSON.parse(decodeURIComponent(resultsData as string));
       setRecommendation(parsedResults);
+      setIsLoading(false);
     }
   }, [router.query]);
+
+  useEffect(() => {
+    const fetchSearchResults = async () => {
+      if (!recommendation) return;
+
+      const categoryItems = recommendation.items.filter(item => item.category === activeCategory);
+      if (categoryItems.length > 0 && !categoryResults[activeCategory]) {
+        const results = await Promise.all(
+          categoryItems.map(item => getSearchResults(item.description))
+        );
+        setCategoryResults(prev => ({
+          ...prev,
+          [activeCategory]: results.flatMap(r => r.results)
+        }));
+      }
+    };
+
+    fetchSearchResults();
+  }, [activeCategory, recommendation, categoryResults]);
 
   if (isLoading) {
     return (
@@ -44,7 +67,7 @@ export default function ResultsPage() {
         <p className="text-gray-700">{recommendation.style}</p>
       </div>
       
-      <Tabs defaultValue={activeCategory} className="w-full">
+      <Tabs value={activeCategory} className="w-full">
         <TabsList className="w-full justify-start mb-8">
           {categories.map((category) => (
             <TabsTrigger
@@ -57,7 +80,21 @@ export default function ResultsPage() {
           ))}
         </TabsList>
 
-        
+        {categories.map((category) => (
+          <TabsContent key={category} value={category}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {categoryResults[category]?.map((result: any, index: number) => (
+                <ProductCard
+                  key={index}
+                  thumbnailURL={result.thumbnailURL}
+                  description={result.description}
+                  productURL={result.productURL}
+                  price={result.price}
+                />
+              ))}
+            </div>
+          </TabsContent>
+        ))}
       </Tabs>
     </div>
   );
