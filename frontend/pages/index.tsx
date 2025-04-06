@@ -12,6 +12,7 @@ export default function Home() {
   const [skinColor, setSkinColor] = useState('');
   const [gender, setGender] = useState('');
   const [priceRange, setPriceRange] = useState('medium'); // Default to medium price range
+  const [expression, setExpression] = useState('');
   
   // User photos (photos of the person standing)
   const [userPhotos, setUserPhotos] = useState<File[]>([]);
@@ -26,8 +27,9 @@ export default function Home() {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [categorizedRecommendations, setCategorizedRecommendations] = useState<Record<string, any[]>>({});
   const [searchQueries, setSearchQueries] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   const handleUserPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -97,55 +99,75 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
+    setIsLoading(true);
+    setError('');
     setRecommendations([]);
     setCategorizedRecommendations({});
     setSearchQueries([]);
 
     try {
+      // Create FormData object
       const formData = new FormData();
+      
+      // Add required text fields
       formData.append('style_description', styleDescription);
+      
+      // Add optional text fields
       if (skinColor) formData.append('skin_color', skinColor);
       if (gender) formData.append('gender', gender);
-      formData.append('price_range', priceRange);
+      if (expression) formData.append('expression', expression);
+      if (priceRange) formData.append('price_range', priceRange);
       
       // Add user photos (photos of the person)
-      if (userPhotos.length > 0) {
-        userPhotos.forEach((photo, index) => {
-          formData.append(`user_photo_${index}`, photo);
-        });
-      }
+      userPhotos.forEach((photo) => {
+        formData.append('user_photos', photo);
+      });
       
-      // Add aesthetic reference photos
-      if (aestheticPhotos.length > 0) {
-        aestheticPhotos.forEach((photo, index) => {
-          formData.append(`image_${index}`, photo);
-        });
-      }
+      // Add aesthetic photos (style reference photos)
+      aestheticPhotos.forEach((photo) => {
+        formData.append('aesthetic_photos', photo);
+      });
 
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/recommendations`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
+      console.log('Submitting form data with:');
+      console.log(`- Style description: ${styleDescription}`);
+      console.log(`- User photos: ${userPhotos.length}`);
+      console.log(`- Aesthetic photos: ${aestheticPhotos.length}`);
+      console.log(`- Price range: ${priceRange}`);
+
+      // Make API request
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const response = await axios.post(`${API_URL}/api/recommendations`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
 
       if (response.data.success) {
-        setRecommendations(response.data.recommendations || []);
-        setCategorizedRecommendations(response.data.categorized_recommendations || {});
-        setSearchQueries(response.data.search_queries || []);
+        // Set search queries used
+        if (response.data.search_queries_used) {
+          setSearchQueries(response.data.search_queries_used);
+        }
+        
+        // Process categorized recommendations
+        const categories = response.data.recommendations || {};
+        setCategorizedRecommendations(categories);
+        
+        // Flatten recommendations for legacy support
+        const allRecommendations = Object.values(categories).flat() as any[];
+        setRecommendations(allRecommendations);
+        
+        // Scroll to results
+        if (resultsRef.current) {
+          resultsRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
       } else {
         setError(response.data.error || 'Failed to get recommendations');
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
-      console.error('Error:', err);
+      console.error('Error fetching recommendations:', err);
+      setError(err.message || 'An error occurred while fetching recommendations');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -280,14 +302,18 @@ export default function Home() {
             
             {/* Style Description - Making this optional */}
             <div className="mb-6">
-              <h2 className="text-xl font-semibold mb-4 text-gray-800">Describe Your Style (Optional)</h2>
+              <label htmlFor="style-description" className="block text-gray-700 font-medium mb-2">
+                Describe Your Style (Optional)
+              </label>
               <textarea
-                id="styleDescription"
+                id="style-description"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={4}
+                placeholder="Describe your preferred fashion style, colors, patterns, etc."
                 value={styleDescription}
                 onChange={(e) => setStyleDescription(e.target.value)}
-                className="border border-gray-300 rounded-lg p-3 w-full h-24 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
-                placeholder="Describe the style you're looking for (e.g., 'Minimalist Scandinavian style with neutral colors' or 'Colorful bohemian summer outfits')"
-              />
+                required={false}
+              ></textarea>
             </div>
             
             {/* Additional Options */}
@@ -358,14 +384,14 @@ export default function Home() {
             <div className="text-center">
               <button
                 type="submit"
-                disabled={loading || (userPhotoPreviews.length === 0 && aestheticPhotoPreviews.length === 0)}
+                disabled={isLoading || (userPhotoPreviews.length === 0 && aestheticPhotoPreviews.length === 0)}
                 className={`bg-blue-600 text-white py-3 px-8 rounded-lg font-medium text-lg shadow-md transition duration-200 ${
-                  loading || (userPhotoPreviews.length === 0 && aestheticPhotoPreviews.length === 0)
+                  isLoading || (userPhotoPreviews.length === 0 && aestheticPhotoPreviews.length === 0)
                     ? 'opacity-50 cursor-not-allowed' 
                     : 'hover:bg-blue-700 hover:shadow-lg'
                 }`}
               >
-                {loading ? (
+                {isLoading ? (
                   <div className="flex items-center justify-center">
                     <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -402,7 +428,7 @@ export default function Home() {
           
           {/* Categorized Recommendations */}
           {Object.keys(categorizedRecommendations).length > 0 && (
-            <div className="mb-8">
+            <div className="mb-8" ref={resultsRef}>
               <h2 className="text-3xl font-bold mb-8 text-center text-gray-800">Your Fashion Recommendations</h2>
               
               {Object.entries(categorizedRecommendations).map(([category, items]) => (
@@ -420,10 +446,37 @@ export default function Home() {
                             rel="noopener noreferrer" 
                             className="block"
                             onClick={(e) => {
+                              // Validate the link before allowing navigation
                               if (!item.link || item.link === '#') {
                                 e.preventDefault();
                                 alert('Product link is not available');
+                                return;
                               }
+                              
+                              // Check if the link is properly formatted
+                              const isValidUrl = (url: string) => {
+                                try {
+                                  new URL(url);
+                                  return true;
+                                } catch (e) {
+                                  return false;
+                                }
+                              };
+                              
+                              if (!isValidUrl(item.link)) {
+                                e.preventDefault();
+                                // Try to fix the URL by adding https://
+                                const fixedUrl = `https://${item.link}`;
+                                if (isValidUrl(fixedUrl)) {
+                                  // Open the fixed URL
+                                  window.open(fixedUrl, '_blank', 'noopener,noreferrer');
+                                } else {
+                                  alert('Invalid product link format');
+                                }
+                              }
+                              
+                              // Track click for analytics (optional)
+                              console.log(`Clicked on product: ${item.title}`);
                             }}
                           >
                             <div className="h-48 bg-gray-200 relative">
@@ -486,10 +539,37 @@ export default function Home() {
                       rel="noopener noreferrer" 
                       className="block"
                       onClick={(e) => {
+                        // Validate the link before allowing navigation
                         if (!item.link || item.link === '#') {
                           e.preventDefault();
                           alert('Product link is not available');
+                          return;
                         }
+                        
+                        // Check if the link is properly formatted
+                        const isValidUrl = (url: string) => {
+                          try {
+                            new URL(url);
+                            return true;
+                          } catch (e) {
+                            return false;
+                          }
+                        };
+                        
+                        if (!isValidUrl(item.link)) {
+                          e.preventDefault();
+                          // Try to fix the URL by adding https://
+                          const fixedUrl = `https://${item.link}`;
+                          if (isValidUrl(fixedUrl)) {
+                            // Open the fixed URL
+                            window.open(fixedUrl, '_blank', 'noopener,noreferrer');
+                          } else {
+                            alert('Invalid product link format');
+                          }
+                        }
+                        
+                        // Track click for analytics (optional)
+                        console.log(`Clicked on product: ${item.title}`);
                       }}
                     >
                       <div className="h-48 bg-gray-200 relative">

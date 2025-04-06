@@ -1,8 +1,10 @@
 import os
 import httpx
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple
 import dotenv
 import asyncio
+import traceback
+import re
 
 # Load environment variables explicitly
 dotenv.load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env'))
@@ -10,7 +12,17 @@ dotenv.load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
 # SerpAPI base URL
 SERPAPI_BASE_URL = "https://serpapi.com/search"
 
-async def search_fashion_items(search_queries: List[str], results_per_query: int = 5) -> List[Dict[str, Any]]:
+# Define clothing categories
+CLOTHING_CATEGORIES = {
+    "tops": ["shirt", "blouse", "t-shirt", "tee", "sweater", "sweatshirt", "tank", "top", "turtleneck", "polo", "jersey"],
+    "bottoms": ["pants", "jeans", "shorts", "skirt", "trousers", "chinos", "joggers", "leggings", "slacks", "culottes"],
+    "dresses": ["dress", "gown", "jumpsuit", "romper", "playsuit", "sundress", "maxi", "midi", "mini"],
+    "outerwear": ["jacket", "coat", "blazer", "cardigan", "hoodie", "vest", "parka", "windbreaker", "poncho", "cape"],
+    "shoes": ["shoes", "sneakers", "boots", "sandals", "loafers", "heels", "flats", "oxfords", "pumps", "mules", "espadrilles"],
+    "accessories": ["bag", "purse", "backpack", "wallet", "belt", "scarf", "hat", "gloves", "socks", "jewelry", "watch", "sunglasses"]
+}
+
+async def search_fashion_items(search_queries: List[str], results_per_query: int = 5) -> Dict[str, List[Dict[str, Any]]]:
     """
     Search for fashion items using SerpAPI based on multiple generated search queries.
     
@@ -19,13 +31,25 @@ async def search_fashion_items(search_queries: List[str], results_per_query: int
         results_per_query: Number of results to return per query (default: 5)
     
     Returns:
-        List[Dict]: List of fashion recommendations with details
+        Dict[str, List[Dict]]: Dictionary of categorized fashion recommendations
     """
     api_key = os.getenv("SERPAPI_API_KEY")
     if not api_key:
         raise ValueError("SERPAPI_API_KEY environment variable is not set")
     
-    # Create a list to store all recommendations
+    print(f"Using SerpAPI with key: {api_key[:5]}...{api_key[-5:]}")
+    
+    # Create a dictionary to store categorized recommendations
+    categorized_recommendations = {
+        "tops": [],
+        "bottoms": [],
+        "dresses": [],
+        "outerwear": [],
+        "shoes": [],
+        "accessories": []
+    }
+    
+    # Create a list to store all recommendations before categorization
     all_recommendations = []
     
     # Process each search query
@@ -39,12 +63,107 @@ async def search_fashion_items(search_queries: List[str], results_per_query: int
     
     # Combine results
     for result in results:
+        if isinstance(result, Exception):
+            print(f"Query failed with exception: {str(result)}")
+            continue
         if isinstance(result, list):  # Skip exceptions
             all_recommendations.extend(result)
     
-    # If we have too many results, limit them
-    max_total_results = min(20, len(all_recommendations))
-    return all_recommendations[:max_total_results]
+    print(f"Total recommendations found: {len(all_recommendations)}")
+    
+    # Categorize recommendations
+    for item in all_recommendations:
+        category = categorize_item(item)
+        if category:
+            # Add to the appropriate category
+            categorized_recommendations[category].append(item)
+    
+    # If any category is empty, try to fill it with items from other categories
+    for category in categorized_recommendations:
+        if not categorized_recommendations[category]:
+            print(f"No items found for category: {category}. Attempting to find items...")
+            # Try to find items for this category by making a specific search
+            category_items = await search_for_category(category, api_key, results_per_query)
+            categorized_recommendations[category] = category_items
+    
+    # Limit the number of items per category to avoid overwhelming the user
+    for category in categorized_recommendations:
+        if len(categorized_recommendations[category]) > results_per_query:
+            categorized_recommendations[category] = categorized_recommendations[category][:results_per_query]
+    
+    return categorized_recommendations
+
+def categorize_item(item: Dict[str, Any]) -> str:
+    """
+    Categorize a fashion item based on its title and search query.
+    
+    Args:
+        item: The fashion item to categorize
+    
+    Returns:
+        str: The category of the item
+    """
+    title = item.get("title", "").lower()
+    search_query = item.get("search_query", "").lower()
+    
+    # Check both title and search query for category keywords
+    text_to_check = title + " " + search_query
+    
+    # Try to categorize based on keywords
+    for category, keywords in CLOTHING_CATEGORIES.items():
+        for keyword in keywords:
+            # Use word boundaries to avoid partial matches
+            pattern = r'\b' + re.escape(keyword) + r'\b'
+            if re.search(pattern, text_to_check):
+                return category
+    
+    # If no category was found, try to determine from the search query
+    # This is a fallback mechanism
+    for category, keywords in CLOTHING_CATEGORIES.items():
+        for keyword in keywords:
+            if keyword in search_query:
+                return category
+    
+    # Default to tops if no category is found
+    return "tops"
+
+async def search_for_category(category: str, api_key: str, num_results: int = 5) -> List[Dict[str, Any]]:
+    """
+    Search specifically for items in a given category.
+    
+    Args:
+        category: The category to search for
+        api_key: SerpAPI key
+        num_results: Number of results to return
+    
+    Returns:
+        List[Dict]: List of fashion recommendations for the category
+    """
+    # Create a specific query for the category
+    if category == "tops":
+        query = "stylish shirts tops"
+    elif category == "bottoms":
+        query = "stylish pants trousers jeans"
+    elif category == "dresses":
+        query = "stylish dresses"
+    elif category == "outerwear":
+        query = "stylish jackets coats"
+    elif category == "shoes":
+        query = "stylish shoes footwear"
+    elif category == "accessories":
+        query = "fashion accessories"
+    else:
+        query = f"fashion {category}"
+    
+    # Search for items in this category
+    results = await search_single_query(query, api_key, num_results)
+    
+    # Mark these items with the correct category
+    for item in results:
+        item["category"] = category
+        item["search_query"] = query
+    
+    return results
 
 async def search_single_query(search_query: str, api_key: str, num_results: int = 5) -> List[Dict[str, Any]]:
     """
@@ -67,17 +186,42 @@ async def search_single_query(search_query: str, api_key: str, num_results: int 
         "gl": "us",
         "hl": "en",
         "tbm": "shop",  # Shopping results
-        "num": num_results
+        "num": num_results * 2  # Request more results to ensure we have enough after filtering
     }
     
     try:
-        async with httpx.AsyncClient() as client:
+        print(f"Sending SerpAPI request for query: '{search_query}'")
+        async with httpx.AsyncClient(timeout=30.0) as client:  # Increased timeout
             response = await client.get(SERPAPI_BASE_URL, params=params)
+            
+            # Log response status
+            print(f"SerpAPI response status: {response.status_code}")
+            
+            # Try to get response content even if status code indicates error
+            response_text = response.text
+            
+            # Raise for HTTP errors
             response.raise_for_status()
-            data = response.json()
+            
+            # Parse JSON response
+            try:
+                data = response.json()
+            except Exception as json_err:
+                print(f"Failed to parse JSON response: {str(json_err)}")
+                print(f"Response text: {response_text[:500]}...")  # Print first 500 chars
+                return []
+            
+            # Check for error in response
+            if "error" in data:
+                print(f"SerpAPI returned error: {data['error']}")
+                return []
             
             # Extract shopping results
             shopping_results = data.get("shopping_results", [])
+            
+            if not shopping_results:
+                print(f"No shopping results found for query: '{search_query}'")
+                print(f"Response keys: {list(data.keys())}")
             
             # Process and format the results
             recommendations = []
@@ -85,9 +229,38 @@ async def search_single_query(search_query: str, api_key: str, num_results: int 
                 # Extract the correct product link
                 product_link = item.get("link", "")
                 
+                # If there's no link, try to get it from other fields
+                if not product_link:
+                    # Try to get from product_link field (sometimes SerpAPI uses this field)
+                    product_link = item.get("product_link", "")
+                    
+                    # If still no link, try to get from the source with the title
+                    if not product_link and item.get("source") and item.get("title"):
+                        source = item.get("source", "").lower()
+                        # Create a search URL based on the source
+                        if "amazon" in source:
+                            product_link = f"https://www.amazon.com/s?k={item.get('title', '').replace(' ', '+')}"
+                        elif "ebay" in source:
+                            product_link = f"https://www.ebay.com/sch/i.html?_nkw={item.get('title', '').replace(' ', '+')}"
+                        elif "etsy" in source:
+                            product_link = f"https://www.etsy.com/search?q={item.get('title', '').replace(' ', '+')}"
+                        elif "walmart" in source:
+                            product_link = f"https://www.walmart.com/search?q={item.get('title', '').replace(' ', '+')}"
+                        elif "target" in source:
+                            product_link = f"https://www.target.com/s?searchTerm={item.get('title', '').replace(' ', '+')}"
+                
                 # If the link doesn't start with http or https, add it
                 if product_link and not (product_link.startswith("http://") or product_link.startswith("https://")):
                     product_link = "https://" + product_link
+                
+                # Check if the link is valid
+                if product_link:
+                    # Clean up the URL - remove any problematic characters
+                    product_link = product_link.strip()
+                    # Ensure there are no spaces in the URL
+                    product_link = product_link.replace(" ", "%20")
+                else:
+                    print(f"No product link found for item: {item.get('title', '')[:30]}...")
                 
                 # Add the search query that found this item
                 recommendation = {
@@ -103,8 +276,65 @@ async def search_single_query(search_query: str, api_key: str, num_results: int 
                 }
                 recommendations.append(recommendation)
             
-            return recommendations
-    except Exception as e:
-        print(f"Error calling SerpAPI for query '{search_query}': {str(e)}")
-        # Return empty list in case of error
+            print(f"Found {len(recommendations)} recommendations for query: '{search_query}'")
+            
+            # Limit to requested number of results
+            return recommendations[:num_results]
+    except httpx.TimeoutException:
+        print(f"Timeout error for SerpAPI query '{search_query}': Request timed out")
         return []
+    except httpx.RequestError as e:
+        print(f"Request error for SerpAPI query '{search_query}': {str(e)}")
+        return []
+    except httpx.HTTPStatusError as e:
+        print(f"HTTP error for SerpAPI query '{search_query}': {e.response.status_code} - {str(e)}")
+        print(f"Response content: {e.response.text[:500]}...")  # Print first 500 chars
+        return []
+    except Exception as e:
+        print(f"Unexpected error for SerpAPI query '{search_query}': {str(e)}")
+        print(f"Error details: {traceback.format_exc()}")
+        return []
+
+async def test_serpapi_connection():
+    """
+    Test function to verify SerpAPI connection and API key validity.
+    """
+    api_key = os.getenv("SERPAPI_API_KEY")
+    if not api_key:
+        print("ERROR: SERPAPI_API_KEY environment variable is not set")
+        return False
+    
+    print(f"Testing SerpAPI connection with key: {api_key[:5]}...{api_key[-5:]}")
+    
+    # Simple test query
+    test_query = "test query"
+    params = {
+        "q": test_query,
+        "api_key": api_key,
+        "engine": "google",
+        "google_domain": "google.com",
+        "gl": "us",
+        "hl": "en",
+        "tbm": "shop",
+        "num": 1
+    }
+    
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(SERPAPI_BASE_URL, params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            if "error" in data:
+                print(f"SerpAPI test failed: {data['error']}")
+                return False
+            
+            print("SerpAPI connection test successful")
+            return True
+    except Exception as e:
+        print(f"SerpAPI test failed: {str(e)}")
+        return False
+
+# Run the test when the module is imported
+if __name__ == "__main__":
+    asyncio.run(test_serpapi_connection())
