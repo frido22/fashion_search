@@ -6,7 +6,7 @@ import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
-import { getFashionRecommendations } from "../services/fashionService";
+import { getFashionRecommendationsReal } from "../services/fashionService";
 
 interface FashionUploadFormProps {
   onSubmitSuccess?: (data: any) => void;
@@ -21,6 +21,7 @@ export default function FashionUploadForm({ onSubmitSuccess }: FashionUploadForm
   const [budget, setBudget] = useState<"Low" | "Medium" | "High">("Medium");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [validationError, setValidationError] = useState("");
 
   // References for file inputs
   const inspirationInputRef = useRef<HTMLInputElement>(null);
@@ -66,11 +67,23 @@ export default function FashionUploadForm({ onSubmitSuccess }: FashionUploadForm
   // Form submission handler
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
+    setValidationError("");
     setError("");
 
+    if (inspirationImages.length === 0) {
+      setValidationError("Please upload at least one inspiration image");
+      return;
+    }
+
+    if (!profileImage) {
+      setValidationError("Please upload your profile photo");
+      return;
+    }
+
+    setIsLoading(true);
+
     try {            
-      const response = await getFashionRecommendations(inspirationImages, profileImage, budget, styleDescription);
+      const response = await getFashionRecommendationsReal(inspirationImages, profileImage, budget, styleDescription);
       
       const encodedResults = encodeURIComponent(JSON.stringify(response));
       router.push(`/results?results=${encodedResults}`);
@@ -233,7 +246,12 @@ export default function FashionUploadForm({ onSubmitSuccess }: FashionUploadForm
                 />
               </div>
               
-              {/* Error Message */}
+              {validationError && (
+                <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-md">
+                  {validationError}
+                </div>
+              )}
+              
               {error && (
                 <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-md">
                   {error}
