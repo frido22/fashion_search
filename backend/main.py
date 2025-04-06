@@ -15,9 +15,10 @@ dotenv.load_dotenv()
 app = FastAPI(title="Fashion Perplexity API")
 
 # Configure CORS
+origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Frontend URL
+    allow_origins=origins,  # Use environment variable for origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
