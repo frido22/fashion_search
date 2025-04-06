@@ -1,5 +1,6 @@
 import { Sparkles, Upload, UserCircle2, X } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/router";
 import React, { useRef, useState } from "react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
@@ -12,6 +13,7 @@ interface FashionUploadFormProps {
 }
 
 export default function FashionUploadForm({ onSubmitSuccess }: FashionUploadFormProps) {
+  const router = useRouter();
   // State for form inputs
   const [inspirationImages, setInspirationImages] = useState<string[]>([]);
   const [profileImage, setProfileImage] = useState<string>("");
@@ -85,12 +87,11 @@ export default function FashionUploadForm({ onSubmitSuccess }: FashionUploadForm
       
       const response = await getFashionRecommendations(formData);
       
-      if (onSubmitSuccess) {
-        onSubmitSuccess(response);
-      }
+      const encodedResults = encodeURIComponent(JSON.stringify(response));
+      router.push(`/results?results=${encodedResults}`);
     } catch (err: any) {
       console.error("Error submitting form:", err);
-      setError(err.response?.data?.message || "An error occurred. Please try again.");
+      setError(err.message || "An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }

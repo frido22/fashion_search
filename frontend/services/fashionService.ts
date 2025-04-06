@@ -1,8 +1,43 @@
 import axios from "axios";
 
-interface FashionRecommendation {
-  style: string;
-  items: LookItem[];
+export interface FashionRecommendation {
+  category: string;
+  items: Array<{
+    id: string;
+    name: string;
+    description: string;
+    price: number;
+    imageUrl: string;
+  }>;
+}
+
+export interface FashionRecommendationsResponse {
+  categories: FashionRecommendation[];
+}
+
+export async function getFashionRecommendations(formData: FormData): Promise<FashionRecommendationsResponse> {
+  await new Promise(resolve => setTimeout(resolve, 1500));
+
+  return {
+    categories: [
+      {
+        category: "Tops",
+        items: []
+      },
+      {
+        category: "Bottoms",
+        items: []
+      },
+      {
+        category: "Shoes",
+        items: []
+      },
+      {
+        category: "Accessories",
+        items: []
+      }
+    ]
+  };
 }
 
 interface LookItem {
@@ -10,10 +45,10 @@ interface LookItem {
   category: string;
 }
 
-export const getFashionRecommendations = async (
+export const getFashionRecommendationsReal = async (
   formData: FormData
-) => {
-  const response = await axios.post<SearchResponse>(
+): Promise<FashionRecommendation> => {
+  const response = await axios.post<FashionRecommendation>(
     "http://localhost:8000/api/recommendations",
     formData,
     {

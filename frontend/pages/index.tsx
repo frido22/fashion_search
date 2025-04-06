@@ -1,11 +1,8 @@
 import React, { useState } from "react";
 import Head from "next/head";
 import FashionUploadForm from "../components/FashionUploadForm";
-import RecommendedLooks from "../components/RecommendedLooks";
 import SiteLogo from "../components/SiteLogo";
 import FashionBackground from "../components/FashionBackground";
-import HowItWorks from "../components/HowItWorks";
-import BrandShowcase from "../components/BrandShowcase";
 import { ArrowDown } from "lucide-react";
 import { Button } from "../components/ui/button";
 
@@ -13,13 +10,8 @@ export default function Home() {
   const [recommendations, setRecommendations] = useState(null);
 
   const handleFormSubmit = (data: any) => {
-    // Process the form submission data
     console.log("Form submitted with data:", data);
-    
-    // Set recommendations from API response
     setRecommendations(data.recommendations);
-    
-    // Scroll to recommendations section
     document.getElementById("recommendations")?.scrollIntoView({ behavior: "smooth" });
   };
 
