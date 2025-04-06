@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, Request, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -35,41 +35,98 @@ async def root():
     return {"message": "Welcome to Fashion Perplexity API"}
 
 @app.post("/api/recommendations")
-async def get_recommendations(
-    style_description: str = Form(...),
-    skin_color: Optional[str] = Form(None),
-    gender: Optional[str] = Form(None),
-    expression: Optional[str] = Form(None),
-    image: Optional[UploadFile] = File(None)
-):
+async def get_recommendations(request: Request):
     try:
-        image_path = None
-        if image:
-            image_path = await save_upload_file_temporarily(image)
+        # Parse the form data
+        form_data = await request.form()
         
-        # Combine user inputs
+        # Extract form fields
+        style_description = form_data.get("style_description", "")
+        skin_color = form_data.get("skin_color", "")
+        gender = form_data.get("gender", "")
+        expression = form_data.get("expression", "")
+        price_range = form_data.get("price_range", "medium")  # Get price range with default as medium
+        
+        # Process user photos (photos of the person standing)
+        user_photo_paths = []
+        for key in form_data.keys():
+            if key.startswith("user_photo_") and form_data[key].filename:
+                photo = form_data[key]
+                # Save the uploaded image to a temporary file
+                photo_path = f"temp_user_{photo.filename}"
+                with open(photo_path, "wb") as f:
+                    f.write(await photo.read())
+                user_photo_paths.append(photo_path)
+        
+        # Process aesthetic reference photos
+        aesthetic_photo_paths = []
+        for key in form_data.keys():
+            if key.startswith("image_") and form_data[key].filename:
+                photo = form_data[key]
+                # Save the uploaded image to a temporary file
+                photo_path = f"temp_aesthetic_{photo.filename}"
+                with open(photo_path, "wb") as f:
+                    f.write(await photo.read())
+                aesthetic_photo_paths.append(photo_path)
+        
+        # Prepare user input for OpenAI
         user_input = {
             "style_description": style_description,
             "skin_color": skin_color,
             "gender": gender,
             "expression": expression,
-            "image_path": image_path
+            "user_photo_paths": user_photo_paths,
+            "aesthetic_photo_paths": aesthetic_photo_paths,
+            "price_range": price_range
         }
         
-        # Generate search query using OpenAI
-        search_query = await generate_search_query(user_input)
+        # Generate search queries using OpenAI
+        search_queries = await generate_search_query(user_input)
         
-        # Get fashion recommendations using SerpAPI
-        recommendations = await search_fashion_items(search_query)
+        # Modify search queries based on price range
+        price_adjusted_queries = []
+        for query in search_queries:
+            if price_range == "low":
+                price_adjusted_queries.append(f"{query} affordable budget")
+            elif price_range == "high":
+                price_adjusted_queries.append(f"{query} luxury premium")
+            else:  # medium price range
+                price_adjusted_queries.append(query)  # Keep as is for medium range
         
-        # Clean up temporary image if it was uploaded
-        if image_path and os.path.exists(image_path):
-            os.remove(image_path)
+        # Get fashion recommendations using SerpAPI with price-adjusted queries
+        recommendations = await search_fashion_items(price_adjusted_queries)
+        
+        # Clean up temporary image files if they were created
+        for photo_path in user_photo_paths + aesthetic_photo_paths:
+            if os.path.exists(photo_path):
+                os.remove(photo_path)
+        
+        # Group recommendations by category based on search query
+        categorized_recommendations = {}
+        for item in recommendations:
+            search_query = item.get("search_query", "")
+            # Find which category this item belongs to based on the search query
+            category = "other"
+            for cat in ["tops", "bottoms", "dresses", "outerwear", "shoes", "accessories"]:
+                if cat in search_query.lower():
+                    category = cat
+                    break
             
-        return JSONResponse(content={"recommendations": recommendations})
-    
+            if category not in categorized_recommendations:
+                categorized_recommendations[category] = []
+            
+            categorized_recommendations[category].append(item)
+        
+        # Return the recommendations with category information
+        return {
+            "success": True,
+            "recommendations": recommendations,
+            "categorized_recommendations": categorized_recommendations,
+            "search_queries": price_adjusted_queries
+        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error: {str(e)}")
+        return {"success": False, "error": str(e)}
 
 if __name__ == "__main__":
     import uvicorn
