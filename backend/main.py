@@ -1,7 +1,6 @@
 from fastapi import FastAPI, Request, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
 from typing import List, Optional, Dict
 import os
 import json
@@ -20,13 +19,6 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-class StyleRequest(BaseModel):
-    additional_info: Optional[str] = None
-    skin_color: Optional[str] = None
-    gender: Optional[str] = None
-    expression: Optional[str] = None
-    budget: Optional[str] = "medium"
-
 @app.get("/")
 async def root():
     return {"message": "Welcome to Fashion Perplexity API"}
@@ -40,7 +32,6 @@ async def search_fashion(
     try:
         # Parse the form data
         form_data = await request.form()
-        
         print(f"Received request with form data: {form_data}")
         
         # Extract fields
