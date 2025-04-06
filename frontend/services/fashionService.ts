@@ -1,40 +1,28 @@
 import axios from "axios";
 
-export interface FashionRecommendation {
-  category: string;
-  items: Array<{
-    id: string;
-    name: string;
-    description: string;
-    price: number;
-    imageUrl: string;
-  }>;
+export interface FashionRecommendationResponse {
+  style: string;
+  items: Array<LookItem>;   
 }
 
-export interface FashionRecommendationsResponse {
-  categories: FashionRecommendation[];
-}
-
-export async function getFashionRecommendations(formData: FormData): Promise<FashionRecommendationsResponse> {
+export async function getFashionRecommendations(
+    inspirationImages: File[],
+    userImage: File,
+    budget: string,
+    additionalInfo: string
+): Promise<FashionRecommendationResponse> {
   await new Promise(resolve => setTimeout(resolve, 1500));
 
   return {
-    categories: [
+    style: "Casual",
+    items: [
       {
-        category: "Tops",
-        items: []
+        description: "A casual white t-shirt",
+        category: "Tops"
       },
       {
-        category: "Bottoms",
-        items: []
-      },
-      {
-        category: "Shoes",
-        items: []
-      },
-      {
-        category: "Accessories",
-        items: []
+        description: "A pair of blue jeans",
+        category: "Bottoms"
       }
     ]
   };
@@ -46,17 +34,30 @@ interface LookItem {
 }
 
 export const getFashionRecommendationsReal = async (
-  formData: FormData
-): Promise<FashionRecommendation> => {
-  const response = await axios.post<FashionRecommendation>(
-    "http://localhost:8000/api/recommendations",
-    formData,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    }
-  );
-
-  return response.data;
-}; 
+    inspirationImages: File[],
+    userImage: File,
+    budget: string,
+    additionalInfo: string
+  ): Promise<FashionRecommendationResponse> => {
+    const formData = new FormData();
+  
+    inspirationImages.forEach(image => {
+        formData.append("inspiration_images", image);
+    });
+  
+    formData.append("user_image", userImage);
+    formData.append("budget", budget);
+    formData.append("additional_info", additionalInfo);
+  
+    const response = await axios.post<FashionRecommendationResponse>(
+      "http://localhost:8000/api/recommendations",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+  
+    return response.data;
+  };
