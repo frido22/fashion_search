@@ -6,8 +6,8 @@ export interface FashionRecommendationResponse {
 }
 
 export async function getFashionRecommendations(
-    inspirationImages: File[],
-    userImage: File,
+    inspirationImages: string[],
+    userImage: string,
     budget: string,
     additionalInfo: string
 ): Promise<FashionRecommendationResponse> {
@@ -34,18 +34,19 @@ interface LookItem {
 }
 
 export const getFashionRecommendationsReal = async (
-    inspirationImages: File[],
-    userImage: File,
+    inspirationImages: string[],
+    userImage: string,
     budget: string,
     additionalInfo: string
   ): Promise<FashionRecommendationResponse> => {
     const formData = new FormData();
   
-    inspirationImages.forEach(image => {
-        formData.append("inspiration_images", image);
+    inspirationImages.forEach((image, index) => {
+        const blob = dataURLtoBlob(image);
+        formData.append(`inspiration_images[${index}]`, blob, `inspiration_${index}.jpg`);
     });
   
-    formData.append("user_image", userImage);
+    formData.append("profile_photo", dataURLtoBlob(userImage));
     formData.append("budget", budget);
     formData.append("additional_info", additionalInfo);
   
@@ -60,4 +61,16 @@ export const getFashionRecommendationsReal = async (
     );
   
     return response.data;
+  };
+
+  const dataURLtoBlob = (dataURL: string) => {
+    const arr = dataURL.split(",");
+    const mime = arr[0].match(/:(.*?);/)![1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
   };

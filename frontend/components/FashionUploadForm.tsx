@@ -69,23 +69,8 @@ export default function FashionUploadForm({ onSubmitSuccess }: FashionUploadForm
     setIsLoading(true);
     setError("");
 
-    try {
-      const formData = new FormData();
-      
-      inspirationImages.forEach((img, index) => {
-        const blob = dataURLtoBlob(img);
-        formData.append(`aesthetic_photos_${index}`, blob, `inspiration_${index}.jpg`);
-      });
-      
-      if (profileImage) {
-        const blob = dataURLtoBlob(profileImage);
-        formData.append("profile_photo", blob, "profile.jpg");
-      }
-      
-      formData.append("style_description", styleDescription);
-      formData.append("price_range", budget.toLowerCase());
-      
-      const response = await getFashionRecommendations(formData);
+    try {            
+      const response = await getFashionRecommendations(inspirationImages, profileImage, budget, styleDescription);
       
       const encodedResults = encodeURIComponent(JSON.stringify(response));
       router.push(`/results?results=${encodedResults}`);
@@ -97,18 +82,6 @@ export default function FashionUploadForm({ onSubmitSuccess }: FashionUploadForm
     }
   };
 
-  // Convert data URL to Blob
-  const dataURLtoBlob = (dataURL: string) => {
-    const arr = dataURL.split(",");
-    const mime = arr[0].match(/:(.*?);/)![1];
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) {
-      u8arr[n] = bstr.charCodeAt(n);
-    }
-    return new Blob([u8arr], { type: mime });
-  };
 
   return (
     <section id="fashion-upload" className="py-16 bg-white">
