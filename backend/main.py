@@ -21,11 +21,11 @@ app.add_middleware(
 )
 
 class StyleRequest(BaseModel):
-    style_description: Optional[str] = None
+    additional_info: Optional[str] = None
     skin_color: Optional[str] = None
     gender: Optional[str] = None
     expression: Optional[str] = None
-    price_range: Optional[str] = "medium"
+    budget: Optional[str] = "medium"
 
 @app.get("/")
 async def root():
@@ -34,11 +34,8 @@ async def root():
 @app.post("/api/recommendations")
 async def search_fashion(
     request: Request,
-    style_description: Optional[str] = Form(None),
-    skin_color: Optional[str] = Form(None),
-    gender: Optional[str] = Form(None),
-    expression: Optional[str] = Form(None),
-    price_range: Optional[str] = Form("medium")
+    additional_info: Optional[str] = Form(None),
+    budget: Optional[str] = Form("medium")
 ):
     try:
         # Parse the form data
@@ -46,86 +43,77 @@ async def search_fashion(
         
         print(f"Received request with form data: {form_data}")
         
-        # Extract style description (optional now)
-        style_description = form_data.get("style_description", "")
+        # Extract fields
+        additional_info = form_data.get("additional_info", "")
+        budget = form_data.get("budget", "medium")
         
-        # Extract other form fields
-        skin_color = form_data.get("skin_color", "")
-        gender = form_data.get("gender", "")
-        expression = form_data.get("expression", "")
-        price_range = form_data.get("price_range", "medium")
-        
-        print(f"Extracted fields: style_description={style_description}, price_range={price_range}")
+        print(f"Extracted fields: additional_info={additional_info}, budget={budget}")
         
         # Create temp directories for uploaded images if they don't exist
         temp_dir = os.path.join(os.path.dirname(__file__), "temp")
-        user_photos_dir = os.path.join(temp_dir, "user_photos")
+        profile_photos_dir = os.path.join(temp_dir, "profile_photos")
         aesthetic_photos_dir = os.path.join(temp_dir, "aesthetic_photos")
         
         os.makedirs(temp_dir, exist_ok=True)
-        os.makedirs(user_photos_dir, exist_ok=True)
+        os.makedirs(profile_photos_dir, exist_ok=True)
         os.makedirs(aesthetic_photos_dir, exist_ok=True)
         
-        # Process user photos
-        user_photo_paths = []
-        for key in form_data.keys():
-            if key.startswith("user_photos") and hasattr(form_data[key], "filename") and form_data[key].filename:
-                photo = form_data[key]
-                file_path = os.path.join(user_photos_dir, f"user_photo_{photo.filename}")
-                with open(file_path, "wb") as f:
-                    content = await photo.read()
-                    f.write(content)
-                user_photo_paths.append(file_path)
-                print(f"Saved user photo to {file_path}")
+        # Process user photo (single photo)
+        profile_photo_path = None
+        if "profile_photo" in form_data and hasattr(form_data["profile_photo"], "filename"):
+            photo = form_data["profile_photo"]
+            file_path = os.path.join(profile_photos_dir, f"profile_photo_{photo.filename}")
+            with open(file_path, "wb") as f:
+                content = await photo.read()
+                f.write(content)
+            profile_photo_path = file_path
+            print(f"Saved user photo to {file_path}")
         
-        # Process aesthetic photos
+        # Process inspiration/aesthetic photos (multiple photos)
         aesthetic_photo_paths = []
-        for key in form_data.keys():
-            if key.startswith("aesthetic_photos") and hasattr(form_data[key], "filename") and form_data[key].filename:
-                photo = form_data[key]
-                file_path = os.path.join(aesthetic_photos_dir, f"aesthetic_photo_{photo.filename}")
-                with open(file_path, "wb") as f:
-                    content = await photo.read()
-                    f.write(content)
-                aesthetic_photo_paths.append(file_path)
-                print(f"Saved aesthetic photo to {file_path}")
+        index = 0
+        while True:
+            key = f"inspiration_images[{index}]"
+            if key not in form_data or not hasattr(form_data[key], "filename"):
+                break
+            photo = form_data[key]
+            file_path = os.path.join(aesthetic_photos_dir, f"inspiration_{photo.filename}")
+            with open(file_path, "wb") as f:
+                content = await photo.read()
+                f.write(content)
+            aesthetic_photo_paths.append(file_path)
+            print(f"Saved inspiration photo to {file_path}")
+            index += 1
         
-        print(f"Processed {len(user_photo_paths)} user photos and {len(aesthetic_photo_paths)} aesthetic photos")
+        print(f"Processed 1 user photo and {len(aesthetic_photo_paths)} aesthetic photos")
         
         # Generate search queries using OpenAI
         user_input = {
-            "style_description": style_description,
-            "skin_color": skin_color,
-            "gender": gender,
-            "expression": expression,
-            "price_range": price_range,
-            "user_photo_paths": user_photo_paths,
+            "additional_info": additional_info,
+            "budget": budget,
+            "profile_photo_path": profile_photo_path,
             "aesthetic_photo_paths": aesthetic_photo_paths
         }
         
-        search_queries = await generate_search_query(user_input)
-        print(f"Generated search queries: {search_queries}")
-        
-        # Get categorized fashion recommendations from SerpAPI
-        categorized_recommendations = await search_fashion_items(search_queries)
-        
-        # Print categorization results for debugging
-        print(f"Categorized recommendations: {', '.join([f'{cat}: {len(items)}' for cat, items in categorized_recommendations.items()])}")
+        # Get fashion recommendations from OpenAI
+        recommendations = await generate_search_query(user_input)
         
         # Clean up temporary files
-        for path in user_photo_paths + aesthetic_photo_paths:
+        if profile_photo_path:
+            try:
+                os.remove(profile_photo_path)
+                print(f"Removed temporary file: {profile_photo_path}")
+            except Exception as e:
+                print(f"Error removing temporary file {profile_photo_path}: {str(e)}")
+        for path in aesthetic_photo_paths:
             try:
                 os.remove(path)
                 print(f"Removed temporary file: {path}")
             except Exception as e:
                 print(f"Error removing temporary file {path}: {str(e)}")
         
-        # Return the recommendations with category information
-        return {
-            "success": True,
-            "search_queries_used": search_queries,
-            "recommendations": categorized_recommendations
-        }
+        # Return the recommendations directly
+        return recommendations
         
     except Exception as e:
         import traceback

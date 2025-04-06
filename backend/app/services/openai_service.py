@@ -109,135 +109,101 @@ async def analyze_user_photos(user_photo_paths: List[str]) -> Dict:
         print(f"Error analyzing user photos: {str(e)}")
         return {}
 
-async def generate_search_query(user_input: Dict) -> List[str]:
+async def generate_search_query(user_input: Dict) -> Dict:
     """
-    Generate targeted search queries for fashion recommendations using OpenAI's API.
+    Generate fashion recommendations using OpenAI's API.
     
     Args:
-        user_input: Dictionary containing user inputs including style description,
-                   skin color, gender, expression, price range, and optional image paths.
+        user_input: Dictionary containing:
+            - additional_info: String with style preferences
+            - budget: Price range (low/medium/high)
+            - profile_photo_path: Path to user's profile photo
+            - aesthetic_photo_paths: List of paths to inspiration/aesthetic photos
     
     Returns:
-        List[str]: List of generated search queries for different clothing categories
+        Dict: Fashion recommendations in the format:
+        {
+            "style": "Style category name",
+            "items": [
+                {
+                    "description": "Item description",
+                    "category": "Item category"
+                },
+                ...
+            ]
+        }
     """
     # Extract user inputs
-    style_description = user_input.get("style_description", "")
-    skin_color = user_input.get("skin_color", "")
-    gender = user_input.get("gender", "")
-    expression = user_input.get("expression", "")
-    price_range = user_input.get("price_range", "medium")
-    user_photo_paths = user_input.get("user_photo_paths", [])
+    additional_info = user_input.get("additional_info", "")
+    budget = user_input.get("budget", "medium")
+    profile_photo_path = user_input.get("profile_photo_path")
     aesthetic_photo_paths = user_input.get("aesthetic_photo_paths", [])
     
-    # First, analyze user photos to extract physical attributes
+    # First, analyze user photo if provided
     user_attributes = {}
-    if user_photo_paths:
-        print(f"Analyzing {len(user_photo_paths)} user photos...")
-        user_attributes = await analyze_user_photos(user_photo_paths)
+    if profile_photo_path:
+        print("Analyzing profile photo...")
+        user_attributes = await analyze_user_photos([profile_photo_path])
     
     # Prepare the prompt for OpenAI
-    prompt = "As a fashion expert, create targeted search queries for finding fashion items based on the following preferences:\n"
+    prompt = """As a fashion expert, analyze the provided information and generate fashion recommendations.
     
-    if style_description:
-        prompt += f"\nStyle Description: {style_description}"
-    else:
-        prompt += "\nStyle Description: Not provided. Please use the uploaded photos and other information to determine style preferences."
+Please return your response in the following JSON format EXACTLY:
+{
+    "style": "Overall style category (e.g., Casual, Formal, Bohemian, etc.)",
+    "items": [
+        {
+            "description": "Detailed description of the recommended item",
+            "category": "Category (must be one of: Tops, Bottoms, Dresses, Outerwear, Accessories)"
+        },
+        ...
+    ]
+}
+
+Make sure to:
+1. Include 4-6 items
+2. Use the exact category names: Tops, Bottoms, Dresses, Outerwear, or Accessories
+3. Make descriptions specific and detailed
+4. Consider the provided budget level and style preferences
+5. Return ONLY the JSON, no additional text
+
+User preferences:
+"""
     
-    if skin_color:
-        prompt += f"\nSkin Color: {skin_color}"
-    if gender:
-        prompt += f"\nGender: {gender}"
-    if expression:
-        prompt += f"\nExpression/Mood: {expression}"
-    if price_range:
-        prompt += f"\nPrice Range: {price_range} (low=budget, medium=mid-range, high=luxury)"
+    if additional_info:
+        prompt += f"Style preferences: {additional_info}\n"
     
-    # Add user attributes from photo analysis
+    if budget:
+        prompt += f"Budget level: {budget}\n"
+    
     if user_attributes:
-        prompt += "\n\nAttributes extracted from user photos:"
-        
-        if "gender_presentation" in user_attributes:
-            prompt += f"\nGender Presentation: {user_attributes.get('gender_presentation')}"
-        
-        if "apparent_age_range" in user_attributes:
-            prompt += f"\nAge Range: {user_attributes.get('apparent_age_range')}"
-        
-        if "body_type" in user_attributes:
-            prompt += f"\nBody Type: {user_attributes.get('body_type')}"
-        
-        if "height_impression" in user_attributes:
-            prompt += f"\nHeight Impression: {user_attributes.get('height_impression')}"
-        
-        if "skin_tone" in user_attributes:
-            prompt += f"\nSkin Tone: {user_attributes.get('skin_tone')}"
-        
-        if "style_suggestions" in user_attributes:
-            suggestions = user_attributes.get('style_suggestions', [])
-            if isinstance(suggestions, list):
-                prompt += f"\nStyle Suggestions: {', '.join(suggestions)}"
-            else:
-                prompt += f"\nStyle Suggestions: {suggestions}"
-        
-        if "colors_to_complement" in user_attributes:
-            colors = user_attributes.get('colors_to_complement', [])
-            if isinstance(colors, list):
-                prompt += f"\nRecommended Colors: {', '.join(colors)}"
-            else:
-                prompt += f"\nRecommended Colors: {colors}"
-        
-        if "avoid_styles" in user_attributes:
-            avoid = user_attributes.get('avoid_styles', [])
-            if isinstance(avoid, list):
-                prompt += f"\nStyles to Avoid: {', '.join(avoid)}"
-            else:
-                prompt += f"\nStyles to Avoid: {avoid}"
+        prompt += f"User attributes: {json.dumps(user_attributes, indent=2)}\n"
     
-    # Add specific instructions for diverse clothing categories
-    prompt += """
-    
-    Please create search queries for the following clothing categories:
-    1. Tops (shirts, blouses, t-shirts, etc.)
-    2. Bottoms (pants, jeans, shorts, skirts, etc.)
-    3. Outerwear (jackets, coats, blazers, etc.)
-    4. Shoes (sneakers, boots, sandals, etc.)
-    5. Accessories (belts, bags, jewelry, etc.)
-    
-    Format each query to be specific and detailed, focusing on fit, color, and style.
-    Ensure queries are diverse across categories and don't focus only on one type of clothing.
-    
-    Format your response as a JSON object with the category names as keys and the search queries as values.
-    Example:
-    {
-      "tops": "linen oversized button-down shirt neutral tones",
-      "bottoms": "high-waisted wide-leg trousers earth tones",
-      ...
-    }
-    """
+    if aesthetic_photo_paths:
+        prompt += f"Number of inspiration photos provided: {len(aesthetic_photo_paths)}\n"
     
     # Prepare the messages for the API call
     messages = [
-        {"role": "system", "content": "You are a fashion expert assistant specializing in creating precise search queries that will help find fashion items matching specific aesthetics. Your queries should be detailed, specific, and focused on retrieving relevant fashion recommendations that are personalized to the individual's body type, skin tone, and style preferences."},
+        {"role": "system", "content": "You are a fashion expert who provides specific and detailed clothing recommendations."},
         {"role": "user", "content": prompt}
     ]
     
-    # Add user photos if provided
-    if user_photo_paths and len(user_photo_paths) > 0:
+    # Add user photo if provided
+    if profile_photo_path:
         messages.append({
             "role": "user",
-            "content": f"I'm providing {len(user_photo_paths)} photo(s) of myself. Please analyze my body type, proportions, and overall appearance to recommend clothing that would be flattering for my physique."
+            "content": "I'm providing a photo of myself. Please analyze my body type, proportions, and overall appearance to recommend clothing that would be flattering for my physique."
         })
         
-        # Add each user photo as a separate message
-        for photo_path in user_photo_paths:
-            with open(photo_path, "rb") as image_file:
-                base64_image = base64.b64encode(image_file.read()).decode('utf-8')
-                
-            messages.append({
-                "role": "user",
-                "content": [
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
-                ]
-            })
+        with open(profile_photo_path, "rb") as image_file:
+            base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+            
+        messages.append({
+            "role": "user",
+            "content": [
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
+            ]
+        })
     
     # Add aesthetic photos if provided
     if aesthetic_photo_paths and len(aesthetic_photo_paths) > 0:
@@ -262,7 +228,7 @@ async def generate_search_query(user_input: Dict) -> List[str]:
     try:
         # Use gpt-4o for vision capabilities when images are provided
         # Use gpt-4o-mini when no images are provided (more cost-effective)
-        has_images = (len(user_photo_paths) + len(aesthetic_photo_paths)) > 0
+        has_images = (profile_photo_path is not None) or (len(aesthetic_photo_paths) > 0)
         model = "gpt-4o" if has_images else "gpt-4o-mini"
         
         response = await client.chat.completions.create(
@@ -283,28 +249,56 @@ async def generate_search_query(user_input: Dict) -> List[str]:
             
             if start_idx >= 0 and end_idx > start_idx:
                 json_str = response_text[start_idx:end_idx]
-                queries_dict = json.loads(json_str)
+                recommendations = json.loads(json_str)
                 
-                # Convert to list of queries
-                search_queries = []
-                for category in CLOTHING_CATEGORIES:
-                    if category in queries_dict and queries_dict[category]:
-                        search_queries.append(queries_dict[category])
+                # Validate the structure
+                if "style" in recommendations and "items" in recommendations:
+                    return recommendations
                 
-                # If we couldn't extract any queries, use a fallback
-                if not search_queries:
-                    search_queries = [f"fashion {style_description} {gender} {skin_color}".strip()]
-                
-                return search_queries
-            else:
-                # Fallback if JSON not found
-                return [f"fashion {style_description} {gender} {skin_color}".strip()]
+            # If we get here, the response wasn't in the correct format
+            return {
+                "style": "Casual",
+                "items": [
+                    {
+                        "description": f"Fashion item matching {additional_info}",
+                        "category": "Tops"
+                    },
+                    {
+                        "description": f"Fashion item for {budget} budget",
+                        "category": "Bottoms"
+                    }
+                ]
+            }
                 
         except json.JSONDecodeError:
             # Fallback if JSON parsing fails
-            return [f"fashion {style_description} {gender} {skin_color}".strip()]
+            return {
+                "style": "Casual",
+                "items": [
+                    {
+                        "description": f"Fashion item matching {additional_info}",
+                        "category": "Tops"
+                    },
+                    {
+                        "description": f"Fashion item for {budget} budget",
+                        "category": "Bottoms"
+                    }
+                ]
+            }
             
     except Exception as e:
         print(f"Error calling OpenAI API: {str(e)}")
         # Fallback to a basic search query if API call fails
-        return [f"fashion {style_description} {gender} {skin_color}".strip()]
+        return {
+            "style": "Casual",
+            "items": [
+                {
+                    "description": f"Fashion item matching {additional_info}",
+                    "category": "Tops"
+                },
+                {
+                    "description": f"Fashion item for {budget} budget",
+                    "category": "Bottoms"
+                }
+            ]
+        }
