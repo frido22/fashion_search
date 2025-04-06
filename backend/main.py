@@ -89,7 +89,8 @@ async def search_fashion(
         }
         
         # Get fashion recommendations from OpenAI
-    
+        recommendations = await generate_search_query(user_input)
+        
         # Generate style image
         style_image = await generate_style_image(recommendations)
         base64_image = base64.b64encode(style_image).decode("utf-8")
