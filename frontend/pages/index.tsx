@@ -67,7 +67,7 @@ export default function Home() {
       }
       
       // Make API request to backend
-      const response = await axios.post('http://localhost:8000/api/recommendations', apiFormData, {
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/recommendations`, apiFormData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

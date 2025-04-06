@@ -1,10 +1,10 @@
 import os
 import base64
 from typing import Dict, Optional
-import openai
+from openai import OpenAI, AsyncOpenAI
 
 # Initialize OpenAI client
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 async def generate_search_query(user_input: Dict) -> str:
     """
@@ -59,7 +59,7 @@ async def generate_search_query(user_input: Dict) -> str:
     
     # Call OpenAI API
     try:
-        response = await openai.ChatCompletion.acreate(
+        response = await client.chat.completions.create(
             model="gpt-4-vision-preview",
             messages=messages,
             max_tokens=100
