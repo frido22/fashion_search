@@ -1,10 +1,10 @@
+import { allCategories } from "@/categories";
 import { ProductCard } from "@/components/ProductCard";
 import { FashionRecommendationResponse } from "@/services/fashionService";
 import { getSearchResults } from "@/services/searchService";
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { allCategories } from "@/categories";
 
 export default function ResultsPage() {
   const router = useRouter();
@@ -65,6 +65,16 @@ export default function ResultsPage() {
 
   return (
     <div className="container mx-auto px-4 py-16">
+      <button
+        onClick={() => router.push('/')}
+        className="mb-8 flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+      >
+        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        Back to Home
+      </button>
+
       <h1 className="text-3xl font-bold mb-8 text-center">Your Fashion Recommendations</h1>
 
       <div className="bg-gray-50 p-6 rounded-lg mb-8">
