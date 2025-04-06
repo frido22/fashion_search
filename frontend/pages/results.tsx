@@ -1,5 +1,4 @@
 import { allCategories } from "@/categories";
-import { ProductCard } from "@/components/ProductCard";
 import { FashionRecommendationResponse } from "@/services/fashionService";
 import { getSearchResults } from "@/services/searchService";
 import { useRouter } from "next/router";
@@ -82,7 +81,7 @@ export default function ResultsPage() {
         <h2 className="text-3xl font-bold mb-8">Recommended Aesthetic</h2>
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <div className="flex">
-            <div className="w-1/3">
+            <div className="w-1/3 h-[300px]">
               <img 
                 src={recommendation?.style?.image || 'https://picsum.photos/200/300'} 
                 alt="Style aesthetic" 
@@ -102,14 +101,15 @@ export default function ResultsPage() {
         </div>
       </div>
 
-      <h2 className="text-3xl font-bold mb-8">Recommended Items</h2>
-      <Tabs value={activeCategory} className="w-full">
-        <TabsList className="w-full justify-start mb-8">
+      <h2 className="text-2xl font-bold mb-6">Recommended Items</h2>
+      <Tabs defaultValue={activeCategory} className="w-full">
+        <TabsList className="flex space-x-2 mb-8 border-b">
           {categories.map((category) => (
             <TabsTrigger
               key={category}
               value={category}
               onClick={() => setActiveCategory(category)}
+              className="px-4 py-2 text-gray-600 hover:text-gray-900"
             >
               {category}
             </TabsTrigger>
@@ -118,15 +118,30 @@ export default function ResultsPage() {
 
         {categories.map((category) => (
           <TabsContent key={category} value={category}>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {categoryResults[category]?.map((result: any, index: number) => (
-                <ProductCard
-                  key={index}
-                  thumbnailURL={result.thumbnailURL}
-                  description={result.description}
-                  productURL={result.productURL}
-                  price={result.price}
-                />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {categoryResults[category]?.map((item: any, index: number) => (
+                <div key={index} className="bg-white rounded-lg overflow-hidden shadow-sm relative group">
+                  <div className="aspect-w-1 aspect-h-1">
+                    <img
+                      src={item.thumbnailURL}
+                      alt={item.description}
+                      className="w-full h-full object-cover"
+                    />
+                    <button className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-sm">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="p-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-semibold">{item.price}</span>
+                      <button className="text-gray-600 hover:text-gray-900 px-4 py-2 border rounded-md">
+                        View Product
+                      </button>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           </TabsContent>
