@@ -1,4 +1,3 @@
-import axios from "axios";
 import { Sparkles, Upload, UserCircle2, X } from "lucide-react";
 import Image from "next/image";
 import React, { useRef, useState } from "react";
@@ -6,6 +5,7 @@ import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
+import { getFashionRecommendations } from "../services/fashionService";
 
 interface FashionUploadFormProps {
   onSubmitSuccess?: (data: any) => void;
@@ -68,10 +68,8 @@ export default function FashionUploadForm({ onSubmitSuccess }: FashionUploadForm
     setError("");
 
     try {
-      // Prepare form data
       const formData = new FormData();
       
-      // Convert base64 images to Blob and append to formData
       inspirationImages.forEach((img, index) => {
         const blob = dataURLtoBlob(img);
         formData.append(`aesthetic_photos_${index}`, blob, `inspiration_${index}.jpg`);
@@ -85,62 +83,10 @@ export default function FashionUploadForm({ onSubmitSuccess }: FashionUploadForm
       formData.append("style_description", styleDescription);
       formData.append("price_range", budget.toLowerCase());
       
-      // Send data to backend
-      const response = await axios.post("http://localhost:8000/api/recommendations", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      const response = await getFashionRecommendations(formData);
       
-      // Transform the response data to match what RecommendedLooks expects
-      if (response.data && response.data.recommendations) {
-        // Extract the categorized recommendations from the API response
-        const categorizedRecommendations = response.data.recommendations;
-        
-        // Transform the data to match the RecommendedLooks component's expected format
-        const transformedData = {
-          styleProfile: {
-            name: "Your Style Profile",
-            description: styleDescription || "Based on your preferences and uploaded images"
-          },
-          categories: Object.entries(categorizedRecommendations).map(([category, items]) => {
-            // Ensure items is treated as an array
-            const itemsArray = Array.isArray(items) ? items : [];
-            
-            return {
-              id: category.toLowerCase().replace(/\s+/g, '-'),
-              name: category,
-              description: `Curated ${category.toLowerCase()} items that match your style preferences`,
-              looks: [
-                {
-                  id: `${category.toLowerCase().replace(/\s+/g, '-')}-1`,
-                  name: `${category} Look`,
-                  description: `A curated ${category.toLowerCase()} look based on your style preferences`,
-                  image: itemsArray[0]?.thumbnail || "",
-                  items: itemsArray.map((item: any, index: number) => ({
-                    id: `item-${category}-${index}`,
-                    name: item.title || "Fashion Item",
-                    price: item.price || "Price unavailable",
-                    image: item.thumbnail || "",
-                    brand: item.source || "Unknown Brand",
-                    url: item.link || "#"
-                  })),
-                  tags: [category, "Recommended", "Your Style"]
-                }
-              ]
-            };
-          })
-        };
-        
-        // Pass the transformed data to the onSubmitSuccess callback
-        if (onSubmitSuccess) {
-          onSubmitSuccess({
-            ...response.data,
-            recommendations: transformedData
-          });
-        }
-      } else {
-        throw new Error("Invalid response format from API");
+      if (onSubmitSuccess) {
+        onSubmitSuccess(response);
       }
     } catch (err: any) {
       console.error("Error submitting form:", err);
