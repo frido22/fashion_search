@@ -150,7 +150,12 @@ async def generate_search_query(user_input: Dict) -> Dict:
     
 Please return your response in the following JSON format EXACTLY:
 {
-    "style": "Overall style category (e.g., Casual, Formal, Bohemian, etc.)",
+    "style": { 
+        "title": "Minimalistic chic",
+        "description": "Clean lines, neutral colors and timeless silhouettes",
+        "tags": ["clean lines", "neutral palette", "timeless"],
+
+    },
     "items": [
         {
             "description": "Detailed description of the recommended item",
@@ -253,11 +258,18 @@ User preferences:
                 
                 # Validate the structure
                 if "style" in recommendations and "items" in recommendations:
-                    return recommendations
+                    if "title" in recommendations["style"] and "description" in recommendations["style"] and "tags" in recommendations["style"]:
+                        return recommendations
+                    else:
+                        print("Invalid style format in response, here's the response: ", json_str)
                 
             # If we get here, the response wasn't in the correct format
             return {
-                "style": "Casual",
+                "style": {
+                    "title": "Casual",
+                    "description": "Casual style",
+                    "tags": ["casual", "comfortable", "everyday"]
+                },
                 "items": [
                     {
                         "description": f"Fashion item matching {additional_info}",
@@ -273,7 +285,11 @@ User preferences:
         except json.JSONDecodeError:
             # Fallback if JSON parsing fails
             return {
-                "style": "Casual",
+                "style": {
+                    "title": "Casual",
+                    "description": "Casual style",
+                    "tags": ["casual", "comfortable", "everyday"]
+                },
                 "items": [
                     {
                         "description": f"Fashion item matching {additional_info}",
@@ -290,7 +306,11 @@ User preferences:
         print(f"Error calling OpenAI API: {str(e)}")
         # Fallback to a basic search query if API call fails
         return {
-            "style": "Casual",
+            "style": {
+                    "title": "Casual",
+                    "description": "Casual style",
+                    "tags": ["casual", "comfortable", "everyday"]
+                },
             "items": [
                 {
                     "description": f"Fashion item matching {additional_info}",
