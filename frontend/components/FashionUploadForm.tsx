@@ -1,11 +1,11 @@
-import React, { useState, useRef } from "react";
+import axios from "axios";
+import { Sparkles, Upload, UserCircle2, X } from "lucide-react";
+import Image from "next/image";
+import React, { useRef, useState } from "react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
-import Image from "next/image";
-import axios from "axios";
-import { Upload, X, Sparkles } from "lucide-react";
 
 interface FashionUploadFormProps {
   onSubmitSuccess?: (data: any) => void;
@@ -14,7 +14,7 @@ interface FashionUploadFormProps {
 export default function FashionUploadForm({ onSubmitSuccess }: FashionUploadFormProps) {
   // State for form inputs
   const [inspirationImages, setInspirationImages] = useState<string[]>([]);
-  const [personalImages, setPersonalImages] = useState<string[]>([]);
+  const [profileImage, setProfileImage] = useState<string>("");
   const [styleDescription, setStyleDescription] = useState("");
   const [budget, setBudget] = useState<"Low" | "Medium" | "High">("Medium");
   const [isLoading, setIsLoading] = useState(false);
@@ -22,29 +22,30 @@ export default function FashionUploadForm({ onSubmitSuccess }: FashionUploadForm
 
   // References for file inputs
   const inspirationInputRef = useRef<HTMLInputElement>(null);
-  const personalInputRef = useRef<HTMLInputElement>(null);
+  const profileInputRef = useRef<HTMLInputElement>(null);
 
   // Handle inspiration image upload
   const handleInspirationUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      const file = files[0];
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setInspirationImages((prev) => [...prev, e.target?.result as string]);
-      };
-      reader.readAsDataURL(file);
+      Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setInspirationImages((prev) => [...prev, e.target?.result as string]);
+        };
+        reader.readAsDataURL(file);
+      });
     }
   };
 
-  // Handle personal image upload
-  const handlePersonalUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle profile image upload
+  const handleProfileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
       const file = files[0];
       const reader = new FileReader();
       reader.onload = (e) => {
-        setPersonalImages((prev) => [...prev, e.target?.result as string]);
+        setProfileImage(e.target?.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -55,9 +56,9 @@ export default function FashionUploadForm({ onSubmitSuccess }: FashionUploadForm
     setInspirationImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Remove personal image
-  const removePersonalImage = (index: number) => {
-    setPersonalImages((prev) => prev.filter((_, i) => i !== index));
+  // Remove profile image
+  const removeProfileImage = () => {
+    setProfileImage("");
   };
 
   // Form submission handler
@@ -76,10 +77,10 @@ export default function FashionUploadForm({ onSubmitSuccess }: FashionUploadForm
         formData.append(`aesthetic_photos_${index}`, blob, `inspiration_${index}.jpg`);
       });
       
-      personalImages.forEach((img, index) => {
-        const blob = dataURLtoBlob(img);
-        formData.append(`user_photos_${index}`, blob, `personal_${index}.jpg`);
-      });
+      if (profileImage) {
+        const blob = dataURLtoBlob(profileImage);
+        formData.append("profile_photo", blob, "profile.jpg");
+      }
       
       formData.append("style_description", styleDescription);
       formData.append("price_range", budget.toLowerCase());
@@ -170,94 +171,95 @@ export default function FashionUploadForm({ onSubmitSuccess }: FashionUploadForm
             <form onSubmit={handleSubmit} className="p-8">
               <h2 className="text-2xl font-bold mb-6 text-center">Find Your Perfect Style Match</h2>
               
-              {/* Inspiration Images Upload */}
-              <div className="mb-8">
-                <h3 className="text-lg font-medium mb-3">Upload Inspiration</h3>
-                <p className="text-gray-500 text-sm mb-4">
-                  Share images of styles you love or want to emulate
-                </p>
-                
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
-                  {inspirationImages.map((img, index) => (
-                    <div key={index} className="relative aspect-square rounded-md overflow-hidden bg-gray-100">
-                      <Image 
-                        src={img} 
-                        alt={`Inspiration ${index + 1}`} 
-                        fill
-                        className="object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeInspirationImage(index)}
-                        className="absolute top-2 right-2 bg-black/70 text-white rounded-full p-1"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  ))}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div>
+                  <h3 className="text-lg font-medium mb-3">Upload Inspiration</h3>
+                  <p className="text-gray-500 text-sm mb-4">
+                    Share images of styles you love or want to emulate
+                  </p>
                   
-                  <button
-                    type="button"
-                    onClick={() => inspirationInputRef.current?.click()}
-                    className="aspect-square rounded-md border-2 border-dashed border-gray-300 flex flex-col items-center justify-center hover:border-gray-400 transition-colors"
-                  >
-                    <Upload className="h-6 w-6 text-gray-400 mb-2" />
-                    <span className="text-sm text-gray-500">Add Image</span>
-                  </button>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    {inspirationImages.map((img, index) => (
+                      <div key={index} className="relative aspect-square rounded-md overflow-hidden bg-gray-100">
+                        <Image 
+                          src={img} 
+                          alt={`Inspiration ${index + 1}`} 
+                          fill
+                          className="object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeInspirationImage(index)}
+                          className="absolute top-2 right-2 bg-black/70 text-white rounded-full p-1"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ))}
+                    
+                    <button
+                      type="button"
+                      onClick={() => inspirationInputRef.current?.click()}
+                      className="aspect-square rounded-md border-2 border-dashed border-gray-300 flex flex-col items-center justify-center hover:border-gray-400 transition-colors"
+                    >
+                      <Upload className="h-6 w-6 text-gray-400 mb-2" />
+                      <span className="text-sm text-gray-500">Add Images</span>
+                    </button>
+                  </div>
+                  
+                  <Input
+                    ref={inspirationInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleInspirationUpload}
+                    className="hidden"
+                    multiple
+                  />
                 </div>
                 
-                <Input
-                  ref={inspirationInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleInspirationUpload}
-                  className="hidden"
-                />
-              </div>
-              
-              {/* Personal Images Upload */}
-              <div className="mb-8">
-                <h3 className="text-lg font-medium mb-3">Upload Your Photos</h3>
-                <p className="text-gray-500 text-sm mb-4">
-                  Share photos of yourself to help us recommend styles that suit you
-                </p>
-                
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
-                  {personalImages.map((img, index) => (
-                    <div key={index} className="relative aspect-square rounded-md overflow-hidden bg-gray-100">
-                      <Image 
-                        src={img} 
-                        alt={`Personal ${index + 1}`} 
-                        fill
-                        className="object-cover"
-                      />
+                <div>
+                  <h3 className="text-lg font-medium mb-3">Your Profile Picture</h3>
+                  <p className="text-gray-500 text-sm mb-4">
+                    Upload a photo of yourself to personalize your experience
+                  </p>
+                  
+                  <div className="flex justify-center mb-4">
+                    {profileImage ? (
+                      <div className="relative w-40 h-40">
+                        <Image 
+                          src={profileImage} 
+                          alt="Profile picture" 
+                          fill
+                          className="rounded-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={removeProfileImage}
+                          className="absolute top-2 right-2 bg-black/70 text-white rounded-full p-1"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : (
                       <button
                         type="button"
-                        onClick={() => removePersonalImage(index)}
-                        className="absolute top-2 right-2 bg-black/70 text-white rounded-full p-1"
+                        onClick={() => profileInputRef.current?.click()}
+                        className="w-40 h-40 rounded-full border-2 border-dashed border-gray-300 flex flex-col items-center justify-center hover:border-gray-400 transition-colors"
                       >
-                        <X size={16} />
+                        <UserCircle2 className="h-12 w-12 text-gray-400 mb-2" />
+                        <span className="text-sm text-gray-500">Add Profile Picture</span>
                       </button>
-                    </div>
-                  ))}
+                    )}
+                  </div>
                   
-                  <button
-                    type="button"
-                    onClick={() => personalInputRef.current?.click()}
-                    className="aspect-square rounded-md border-2 border-dashed border-gray-300 flex flex-col items-center justify-center hover:border-gray-400 transition-colors"
-                  >
-                    <Upload className="h-6 w-6 text-gray-400 mb-2" />
-                    <span className="text-sm text-gray-500">Add Image</span>
-                  </button>
+                  <Input
+                    ref={profileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleProfileUpload}
+                    className="hidden"
+                  />
                 </div>
-                
-                <Input
-                  ref={personalInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePersonalUpload}
-                  className="hidden"
-                />
               </div>
               
               {/* Budget Selection */}

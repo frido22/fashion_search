@@ -33,27 +33,6 @@ export default function Home() {
 
       <FashionBackground />
 
-      {/* Navigation */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-white/70 border-b border-black/5">
-        <div className="container mx-auto py-4 px-4 flex justify-between items-center">
-          <div className="w-20"></div> {/* Empty div for spacing */}
-          <nav className="hidden md:flex space-x-8">
-            <a href="#how-it-works" className="text-gray-600 hover:text-black transition-colors">
-              How It Works
-            </a>
-            <a href="#showcase" className="text-gray-600 hover:text-black transition-colors">
-              Showcase
-            </a>
-            <a href="#about" className="text-gray-600 hover:text-black transition-colors">
-              About
-            </a>
-          </nav>
-          <Button variant="outline" className="rounded-full border-black/20 hover:border-black/40">
-            Sign In
-          </Button>
-        </div>
-      </header>
-
       {/* Hero Section */}
       <section className="container relative mx-auto px-4 py-20 md:py-24 flex flex-col items-center text-center z-10">
         <div className="mb-8">
@@ -79,22 +58,6 @@ export default function Home() {
       <div id="fashion-upload">
         <FashionUploadForm onSubmitSuccess={handleFormSubmit} />
       </div>
-
-      {/* Recommendations Section */}
-      <div id="recommendations">
-        {recommendations && <RecommendedLooks recommendations={recommendations} />}
-      </div>
-
-      {/* How It Works */}
-      <div id="how-it-works">
-        <HowItWorks />
-      </div>
-
-      {/* Brand Showcase */}
-      <div id="showcase">
-        <BrandShowcase />
-      </div>
-
       {/* Footer */}
       <footer className="border-t border-gray-200 py-12 mt-20 bg-black text-white">
         <div className="container mx-auto px-4 text-center">
