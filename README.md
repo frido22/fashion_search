@@ -26,23 +26,34 @@ A personalized fashion recommendation platform that allows users to upload image
 - OpenAI API key
 - SerpApi API key
 
-### Installation
+### Easy Installation
 
-1. Clone the repository
-2. Install frontend dependencies:
+1. Clone the repository:
    ```
-   cd frontend
-   npm install
+   git clone https://github.com/frido22/fashion_search.git
+   cd fashion_search
    ```
-3. Install backend dependencies:
+
+2. Install backend dependencies:
    ```
    cd backend
-   pip install -r requirements.txt
+   pip3 install -r requirements.txt
    ```
-4. Create a `.env` file in the backend directory with your API keys:
+
+3. Set up environment variables:
+   ```
+   cp .env.example .env
+   ```
+   Then edit the `.env` file and add your API keys:
    ```
    OPENAI_API_KEY=your_openai_api_key
    SERPAPI_API_KEY=your_serpapi_api_key
+   ```
+
+4. Install frontend dependencies:
+   ```
+   cd ../frontend
+   npm install
    ```
 
 ### Running the Application
@@ -77,4 +88,3 @@ fashion_search/
     ├── public/             # Static assets
     ├── styles/             # CSS styles
     └── package.json        # Node.js dependencies
-```
