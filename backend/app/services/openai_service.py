@@ -151,10 +151,9 @@ async def generate_search_query(user_input: Dict) -> Dict:
 Please return your response in the following JSON format EXACTLY:
 {
     "style": { 
-        "title": "Minimalistic chic",
-        "description": "Clean lines, neutral colors and timeless silhouettes",
-        "tags": ["clean lines", "neutral palette", "timeless"],
-
+        "title": "Style category name",
+        "description": "Description of the style",
+        "tags": ["tag1", "tag2", ...],
     },
     "items": [
         {
