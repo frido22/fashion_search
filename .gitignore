@@ -58,3 +58,7 @@ venv/
 
 # Vercel
 .vercel
+
+# Project specific
+/frontend_backup/
+/frontend_suggestion/
