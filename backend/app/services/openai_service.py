@@ -4,6 +4,7 @@ from typing import Dict, Optional, List
 from openai import OpenAI, AsyncOpenAI
 import dotenv
 import json
+from pydantic import BaseModel
 
 # Load environment variables explicitly
 dotenv.load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env'))
@@ -24,6 +25,20 @@ CLOTHING_CATEGORIES = [
     "shoes",
     "accessories"
 ]
+
+
+class Style(BaseModel):
+    title: str
+    description: str
+    tags: List[str]
+
+class Item(BaseModel):
+    description: str
+    category: str
+
+class StyleResponse(BaseModel):
+    style: Style
+    items: List[Item]
 
 async def analyze_user_photos(user_photo_paths: List[str]) -> Dict:
     """
@@ -109,6 +124,7 @@ async def analyze_user_photos(user_photo_paths: List[str]) -> Dict:
         print(f"Error analyzing user photos: {str(e)}")
         return {}
 
+
 async def generate_search_query(user_input: Dict) -> Dict:
     """
     Generate fashion recommendations using OpenAI's API.
@@ -123,7 +139,11 @@ async def generate_search_query(user_input: Dict) -> Dict:
     Returns:
         Dict: Fashion recommendations in the format:
         {
-            "style": "Style category name",
+             "style": { 
+                "title": "Style category name",
+                "description": "Description of the style",
+            "tags": ["tag1", "tag2", ...],
+        },
             "items": [
                 {
                     "description": "Item description",
@@ -235,11 +255,12 @@ User preferences:
         has_images = (profile_photo_path is not None) or (len(aesthetic_photo_paths) > 0)
         model = "gpt-4o" if has_images else "gpt-4o-mini"
         
-        response = await client.chat.completions.create(
+        response = await client.beta.chat.completions.parse(
             model=model,
             messages=messages,
             max_tokens=800,
-            temperature=0.7
+            temperature=0.7,
+            response_format=StyleResponse
         )
         
         # Extract the generated search queries
@@ -300,16 +321,16 @@ User preferences:
                     }
                 ]
             }
-            
+
     except Exception as e:
         print(f"Error calling OpenAI API: {str(e)}")
-        # Fallback to a basic search query if API call fails
+        # Fallback to a basic response
         return {
             "style": {
-                    "title": "Casual",
-                    "description": "Casual style",
-                    "tags": ["casual", "comfortable", "everyday"]
-                },
+                "title": "Casual",
+                "description": "Casual style",
+                "tags": ["casual", "comfortable", "everyday"]
+            },
             "items": [
                 {
                     "description": f"Fashion item matching {additional_info}",
