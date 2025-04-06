@@ -64,24 +64,25 @@ export default function ResultsPage() {
 
   return (
     <div className="container mx-auto px-4 py-16">
-      <button
-        onClick={() => router.push('/')}
-        className="mb-8 flex items-center text-gray-600 hover:text-gray-900 transition-colors"
-      >
-        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-        </svg>
-        Back to Home
-      </button>
-
       <div className="mb-16">
-        <h1 className="text-4xl font-bold mb-4">Your Personalized Results</h1>
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-4xl font-bold">Your Personalized Results</h1>
+          <button
+            onClick={() => router.push('/')}
+            className="flex items-center bg-black text-white px-4 py-2 rounded hover:bg-gray-800 transition-colors"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Home
+          </button>
+        </div>
         <p className="text-xl text-gray-600 mb-12">Based on your style preferences, we've curated these recommendations just for you.</p>
 
-        <h2 className="text-3xl font-bold mb-8">Recommended Aesthetic</h2>
+        <h2 className="text-2xl font-bold mb-8">Recommended Aesthetic</h2>
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <div className="flex">
-            <div className="w-1/3 h-[300px]">
+            <div className="w-1/3 h-[240px]">
               <img 
                 src={recommendation?.style?.image || 'https://picsum.photos/200/300'} 
                 alt="Style aesthetic" 
@@ -127,11 +128,18 @@ export default function ResultsPage() {
                       alt={item.description}
                       className="w-full h-full object-cover"
                     />
-                    <button className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-sm">
+                    <a
+                      href={item.productURL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-sm hover:bg-gray-100 transition-colors"
+                    >
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
                       </svg>
-                    </button>
+                    </a>
                   </div>
                   <div className="p-4">
                     <div className="flex justify-between items-center">
