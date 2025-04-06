@@ -75,13 +75,34 @@ export default function ResultsPage() {
         Back to Home
       </button>
 
-      <h1 className="text-3xl font-bold mb-8 text-center">Your Fashion Recommendations</h1>
+      <div className="mb-16">
+        <h1 className="text-4xl font-bold mb-4">Your Personalized Results</h1>
+        <p className="text-xl text-gray-600 mb-12">Based on your style preferences, we've curated these recommendations just for you.</p>
 
-      <div className="bg-gray-50 p-6 rounded-lg mb-8">
-        <h2 className="text-xl font-semibold mb-2">Style Profile</h2>
-        <p className="text-gray-700">{recommendation.style}</p>
+        <h2 className="text-3xl font-bold mb-8">Recommended Aesthetic</h2>
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <div className="flex">
+            <div className="w-1/3">
+              <img 
+                src={recommendation?.style?.image || 'https://picsum.photos/200/300'} 
+                alt="Style aesthetic" 
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="w-2/3 p-8">
+              <h3 className="text-2xl font-bold mb-4">{recommendation?.style.title}</h3>
+              <p className="text-gray-600 mb-6">{recommendation?.style.description}</p>
+              <div className="flex gap-3">
+                {recommendation?.style.tags.map((tag: string) => (
+                  <span key={tag} className="px-4 py-2 bg-gray-100 rounded-full text-sm">{tag}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      
+
+      <h2 className="text-3xl font-bold mb-8">Recommended Items</h2>
       <Tabs value={activeCategory} className="w-full">
         <TabsList className="w-full justify-start mb-8">
           {categories.map((category) => (

@@ -1,8 +1,15 @@
 import axios from "axios";
 
 export interface FashionRecommendationResponse {
-  style: string;
+  style: StyleDescription;
   items: Array<LookItem>;   
+}
+
+interface StyleDescription {
+  title: string;
+  description: string;
+  tags: string[];
+  image?: string;
 }
 
 export async function getFashionRecommendations(
@@ -14,7 +21,12 @@ export async function getFashionRecommendations(
   await new Promise(resolve => setTimeout(resolve, 1500));
 
   return {
-    style: "Casual",
+    style: {
+      title: "Casual",
+      description: "A casual look with a focus on comfort and versatility.",
+      tags: ["casual", "comfortable", "versatile"],
+      image: "https://picsum.photos/200/300"
+    },
     items: [
       {
         description: "A casual white t-shirt",
