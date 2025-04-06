@@ -1,0 +1,1 @@
+export const allCategories = [ "Tops", "Bottoms", "Accessories", "Shoes" ];

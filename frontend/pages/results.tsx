@@ -2,10 +2,9 @@ import { ProductCard } from "@/components/ProductCard";
 import { FashionRecommendationResponse } from "@/services/fashionService";
 import { getSearchResults } from "@/services/searchService";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-
-const categories = [ "Tops", "Bottoms", "Accessories", "Shoes" ];
+import { allCategories } from "@/categories";
 
 export default function ResultsPage() {
   const router = useRouter();
@@ -13,6 +12,12 @@ export default function ResultsPage() {
   const [activeCategory, setActiveCategory] = useState<string>("Tops");
   const [isLoading, setIsLoading] = useState(true);
   const [categoryResults, setCategoryResults] = useState<Record<string, any>>({});
+  const categories = useMemo(() => 
+    allCategories.filter((category: string) => 
+      recommendation?.items.some((item: any) => item.category === category)
+    ),
+    [allCategories, recommendation?.items]
+  );
 
   useEffect(() => {
     const resultsData = router.query.results;
