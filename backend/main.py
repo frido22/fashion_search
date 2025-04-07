@@ -8,6 +8,8 @@ from app.services.openai_service import generate_search_query
 from app.services.serpapi_service import search_fashion_items
 from app.services.searchapi_service import search_products
 import shutil
+from app.services.huggingface_service import generate_style_image
+import base64
 
 app = FastAPI()
 
@@ -89,6 +91,13 @@ async def search_fashion(
         
         # Get fashion recommendations from OpenAI
         recommendations = await generate_search_query(user_input)
+        
+        # Generate style image
+        style_image = await generate_style_image(recommendations)
+        base64_image = base64.b64encode(style_image).decode("utf-8")
+        
+        # Add base64 image to recommendations
+        recommendations["style"]["image"] = f"data:image/png;base64,{base64_image}"
         
         # Clean up temporary files
         if profile_photo_path:
