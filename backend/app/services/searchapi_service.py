@@ -24,6 +24,61 @@ class Product(BaseModel):
 class StyleResponse(BaseModel):
     products: List[Product] = Field(...)
 
+async def extract_product_image_url(product_url: str) -> str:
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1"
+        }
+        
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            try:
+                response = await client.get(product_url, headers=headers)
+                response.raise_for_status()
+                html_content = response.text
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 403:
+                    return ""
+                raise
+            
+            messages = [
+                {
+                    "role": "system", 
+                    "content": """You are a web scraping expert. Extract the main product image URL from the provided HTML content.
+                    Return ONLY the direct URL to the main product image. If multiple images are found, return the URL of the most prominent one.
+                    If no image URL is found, return an empty string."""
+                },
+                {
+                    "role": "user", 
+                    "content": f"Extract the main product image URL from this HTML content: {html_content[:15000]}"
+                }
+            ]
+            
+            response = await openaiClient.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                max_tokens=100,
+                temperature=0.1
+            )
+            
+            image_url = response.choices[0].message.content.strip()
+            
+            if image_url.startswith('"') and image_url.endswith('"'):
+                image_url = image_url[1:-1]
+            
+            return image_url
+            
+    except Exception as e:
+        return ""
+
 async def search_products(query: str) -> List[Dict[str, Any]]:
     """
     Search for products using SearchAPI.io
@@ -66,6 +121,7 @@ async def search_products(query: str) -> List[Dict[str, Any]]:
             organic_results = data.get("organic_results", [])
             
             all_results = organic_results + shopping_results
+            
             products = []
 
             for result in all_results[:5]:
@@ -76,11 +132,16 @@ async def search_products(query: str) -> List[Dict[str, Any]]:
                             price = ext
                             break
 
+                product_url = result.get("link", "")
+                image_url = await extract_product_image_url(product_url)
+                if not image_url:
+                    image_url = result.get("thumbnail", "")
+
                 product = {
                     "description": result.get("snippet", ""),
                     "price": price,
-                    "thumbnailURL": result.get("thumbnail", ""),
-                    "productURL": result.get("link", "")
+                    "thumbnailURL": image_url,
+                    "productURL": product_url
                 }
                 products.append(product)
 
