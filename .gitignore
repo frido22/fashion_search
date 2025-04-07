@@ -1,14 +1,13 @@
 # Dependencies
-/frontend/node_modules
-/frontend/.pnp
-/frontend/.pnp.js
+/node_modules
+/.pnp
+/.pnp.js
 
 # Testing
-/frontend/coverage
+/coverage
 
 # Next.js
-/frontend/.next/
-/frontend/out/
+.next/
 
 # Production
 /frontend/build
@@ -53,12 +52,6 @@ var/
 venv/
 .venv/
 
-# Backend temp files
-/backend/temp/
 
 # Vercel
 .vercel
-
-# Project specific
-/frontend_backup/
-/frontend_suggestion/
