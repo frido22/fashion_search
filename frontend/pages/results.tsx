@@ -3,6 +3,7 @@ import { FashionRecommendationResponse } from "@/services/fashionService";
 import { getSearchResultsReal, SearchResponse } from "@/services/searchService";
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
+import { Skeleton } from "../components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { SearchResult } from "../services/searchService";
 type ErrorState = {
@@ -76,9 +77,45 @@ export default function ResultsPage() {
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-16">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-lg text-gray-600">Loading your recommendations...</p>
+        <div className="mb-16">
+          <div className="flex justify-between items-center mb-4">
+            <Skeleton className="h-10 w-64" />
+            <Skeleton className="h-10 w-32" />
+          </div>
+          <Skeleton className="h-6 w-96 mb-12" />
+
+          <h2 className="text-2xl font-bold mb-8">Recommended Aesthetic</h2>
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div className="flex">
+              <Skeleton className="w-1/3 h-[240px]" />
+              <div className="w-2/3 p-8">
+                <Skeleton className="h-8 w-48 mb-4" />
+                <Skeleton className="h-4 w-full mb-2" />
+                <Skeleton className="h-4 w-3/4 mb-6" />
+                <div className="flex gap-3">
+                  <Skeleton className="h-8 w-20" />
+                  <Skeleton className="h-8 w-24" />
+                  <Skeleton className="h-8 w-16" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <h2 className="text-2xl font-bold mb-6">Recommended Items</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="bg-white rounded-lg overflow-hidden shadow-sm">
+              <Skeleton className="aspect-w-1 aspect-h-1 w-full" />
+              <div className="p-4">
+                <Skeleton className="h-4 w-3/4 mb-2" />
+                <div className="flex justify-between items-center">
+                  <Skeleton className="h-6 w-20" />
+                  <Skeleton className="h-10 w-28" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -163,9 +200,19 @@ export default function ResultsPage() {
         {categories.map((category) => (
           <TabsContent key={category} value={category}>
             {isSearching && category === activeCategory ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-                <p className="text-lg text-gray-600">Searching for {category.toLowerCase()}...</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="bg-white rounded-lg overflow-hidden shadow-sm">
+                    <Skeleton className="aspect-w-1 aspect-h-1 w-full" />
+                    <div className="p-4">
+                      <Skeleton className="h-4 w-3/4 mb-2" />
+                      <div className="flex justify-between items-center">
+                        <Skeleton className="h-6 w-20" />
+                        <Skeleton className="h-10 w-28" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : errors[category] ? (
               <div className="text-center py-12">
