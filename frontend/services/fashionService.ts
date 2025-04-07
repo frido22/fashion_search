@@ -63,7 +63,7 @@ export const getFashionRecommendationsReal = async (
     formData.append("additional_info", additionalInfo);
   
     const response = await axios.post<FashionRecommendationResponse>(
-      "http://localhost:8000/api/recommendations",
+      "/api/recommendations",
       formData,
       {
         headers: {
