@@ -14,7 +14,6 @@ export default function SiteLogo({ size = "medium" }: SiteLogoProps) {
   return (
     <div className={`font-bold ${sizeClasses[size]} tracking-tight`}>
       <span className="text-black">Fashion</span>
-      <span className="text-blue-600">Perplexity</span>
     </div>
   );
 }

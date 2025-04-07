@@ -33,7 +33,7 @@ export default function Home() {
 
         <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">Re-defining Fashion Discovery.</h1>
         <p className="text-gray-600 text-lg md:text-xl max-w-2xl mb-12">
-          Find new styles, shop recommended "looks" and experience AI-generated fashion recommendations with Fashion Perplexity
+          Find new styles, shop recommended "looks" and experience AI-generated fashion recommendations with Fashion Search
         </p>
         <Button
           className="rounded-full px-8 py-6 text-lg bg-black hover:bg-black/90 text-white border-0"
@@ -67,7 +67,7 @@ export default function Home() {
               Contact
             </a>
           </div>
-          <p className="text-gray-500"> 2023 Fashion Perplexity. All rights reserved.</p>
+          <p className="text-gray-500"> 2023 Fashion Search. All rights reserved.</p>
         </div>
       </footer>
     </div>
