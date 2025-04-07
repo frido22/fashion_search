@@ -1,15 +1,15 @@
-interface SearchResponse {
+export interface SearchResponse {
     results: SearchResult[];
   }
   
-  interface SearchResult {
+  export interface SearchResult {
     description: string;
     price: string;
     thumbnailURL: string;
     productURL: string;
   }
   
-  interface SearchRequest {
+  export interface SearchRequest {
       query: string;
   }
 
@@ -40,4 +40,21 @@ export async function getSearchResults(query: string): Promise<SearchResponse> {
   return {
     results: mockResults
   };
+}
+
+export async function getSearchResultsReal(query: string): Promise<SearchResponse> {
+    console.log('getSearchResultsReal', query);
+  const response = await fetch('http://localhost:8000/api/search', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query })
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Search request failed: ${response.statusText}`);
+  }
+  
+  return await response.json();
 }

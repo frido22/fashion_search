@@ -1,16 +1,27 @@
 import { allCategories } from "@/categories";
 import { FashionRecommendationResponse } from "@/services/fashionService";
-import { getSearchResults } from "@/services/searchService";
+import { getSearchResultsReal, SearchResponse } from "@/services/searchService";
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { SearchResult } from "../services/searchService";
+type ErrorState = {
+  [key: string]: string | null;
+};
+
+interface SearchResultWithCategory extends SearchResult {
+  category: string;
+}
 
 export default function ResultsPage() {
   const router = useRouter();
   const [recommendation, setRecommendation] = useState<FashionRecommendationResponse | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>("Tops");
   const [isLoading, setIsLoading] = useState(true);
-  const [categoryResults, setCategoryResults] = useState<Record<string, any>>({});
+  const [categoryResults, setCategoryResults] = useState<Record<string, SearchResult[]>>({});
+  const [errors, setErrors] = useState<ErrorState>({});
+  const [isSearching, setIsSearching] = useState(false);
+  
   const categories = useMemo(() => 
     allCategories.filter((category: string) => 
       recommendation?.items.some((item: any) => item.category === category)
@@ -21,9 +32,14 @@ export default function ResultsPage() {
   useEffect(() => {
     const resultsData = router.query.results;
     if (resultsData) {
-      const parsedResults = JSON.parse(decodeURIComponent(resultsData as string));
-      setRecommendation(parsedResults);
-      setIsLoading(false);
+      try {
+        const parsedResults = JSON.parse(decodeURIComponent(resultsData as string));
+        setRecommendation(parsedResults);
+      } catch (error) {
+        setErrors(prev => ({ ...prev, parsing: "Failed to parse results data" }));
+      } finally {
+        setIsLoading(false);
+      }
     }
   }, [router.query]);
 
@@ -31,33 +47,60 @@ export default function ResultsPage() {
     const fetchSearchResults = async () => {
       if (!recommendation) return;
 
-      const categoryItems = recommendation.items.filter(item => item.category === activeCategory);
-      if (categoryItems.length > 0 && !categoryResults[activeCategory]) {
-        const results = await Promise.all(
-          categoryItems.map(item => getSearchResults(item.description))
-        );
-        setCategoryResults(prev => ({
-          ...prev,
-          [activeCategory]: results.flatMap(r => r.results)
-        }));
-      }
+      setIsSearching(true);
+
+      const results: SearchResultWithCategory[] = await Promise.all(
+        recommendation.items.map(async item => {
+          const r: SearchResponse = await getSearchResultsReal(item.description);
+          console.log('result', r);
+          return {
+            ...r.results[0],
+            category: item.category
+          }
+        })
+      );
+
+      console.log('results', results);
+
+      setCategoryResults(results.reduce((acc, curr) => {
+        acc[curr.category] = [...(acc[curr.category] || []), curr];
+        return acc;
+      }, {} as Record<string, SearchResultWithCategory[]>));
+
+     setIsSearching(false); 
     };
 
     fetchSearchResults();
-  }, [activeCategory, recommendation, categoryResults]);
+  }, [recommendation, setCategoryResults, setIsSearching]);
 
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-16">
-        <div className="text-center">Loading...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-lg text-gray-600">Loading your recommendations...</p>
+        </div>
       </div>
     );
   }
 
-  if (!recommendation) {
+  if (!recommendation || errors.parsing) {
     return (
       <div className="container mx-auto px-4 py-16">
-        <div className="text-center">No results found</div>
+        <div className="text-center">
+          <div className="text-red-600 mb-4">
+            <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-lg">{errors.parsing || "No results found"}</p>
+          </div>
+          <button
+            onClick={() => router.push('/')}
+            className="bg-black text-white px-6 py-2 rounded hover:bg-gray-800 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
@@ -119,39 +162,81 @@ export default function ResultsPage() {
 
         {categories.map((category) => (
           <TabsContent key={category} value={category}>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {categoryResults[category]?.map((item: any, index: number) => (
-                <div key={index} className="bg-white rounded-lg overflow-hidden shadow-sm relative group">
-                  <div className="aspect-w-1 aspect-h-1">
-                    <img
-                      src={item.thumbnailURL}
-                      alt={item.description}
-                      className="w-full h-full object-cover"
-                    />
-                    <a
-                      href={item.productURL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-sm hover:bg-gray-100 transition-colors"
-                    >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                        <polyline points="15 3 21 3 21 9" />
-                        <line x1="10" y1="14" x2="21" y2="3" />
-                      </svg>
-                    </a>
-                  </div>
-                  <div className="p-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-semibold">{item.price}</span>
-                      <button className="text-gray-600 hover:text-gray-900 px-4 py-2 border rounded-md">
-                        View Product
-                      </button>
+            {isSearching && category === activeCategory ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+                <p className="text-lg text-gray-600">Searching for {category.toLowerCase()}...</p>
+              </div>
+            ) : errors[category] ? (
+              <div className="text-center py-12">
+                <div className="text-red-600 mb-4">
+                  <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-lg">{errors[category]}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setErrors(prev => {
+                      const newErrors = { ...prev };
+                      delete newErrors[category];
+                      return newErrors;
+                    });
+                    setCategoryResults(prev => {
+                      const newResults = { ...prev };
+                      delete newResults[category];
+                      return newResults;
+                    });
+                  }}
+                  className="bg-black text-white px-6 py-2 rounded hover:bg-gray-800 transition-colors"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {categoryResults[category]?.map((item: SearchResult, index: number) => (
+                  <div key={index} className="bg-white rounded-lg overflow-hidden shadow-sm relative group">
+                    <div className="aspect-w-1 aspect-h-1">
+                      <img
+                        src={item.thumbnailURL}
+                        alt={item.description}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = 'https://picsum.photos/400/400';
+                        }}
+                      />
+                      <a
+                        href={item.productURL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-sm hover:bg-gray-100 transition-colors"
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                          <polyline points="15 3 21 3 21 9" />
+                          <line x1="10" y1="14" x2="21" y2="3" />
+                        </svg>
+                      </a>
+                    </div>
+                    <div className="p-4">
+                      <p className="text-gray-600 mb-2">{item.description}</p>
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-semibold">{item.price}</span>
+                        <a
+                          href={item.productURL}
+                          target="_blank"
+                          rel="noopener noreferrer" 
+                          className="text-gray-600 hover:text-gray-900 px-4 py-2 border rounded-md"
+                        >
+                          View Product
+                        </a>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </TabsContent>
         ))}
       </Tabs>

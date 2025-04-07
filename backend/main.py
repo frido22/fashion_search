@@ -6,6 +6,7 @@ import os
 import json
 from app.services.openai_service import generate_search_query
 from app.services.serpapi_service import search_fashion_items
+from app.services.searchapi_service import search_products
 import shutil
 
 app = FastAPI()
@@ -115,11 +116,27 @@ async def search_fashion(
             content={"success": False, "error": str(e)}
         )
 
-# For backward compatibility
-@app.post("/api/fashion-search")
-async def fashion_search_legacy(request: Request):
-    """Legacy endpoint that redirects to the new /api/recommendations endpoint"""
-    return await search_fashion(request)
+@app.post("/api/search")
+async def search(request: Request):
+    try:
+        body = await request.json()
+        query = body.get("query")
+        
+        if not query:
+            raise HTTPException(status_code=400, detail="Query parameter is required")
+            
+        results = await search_products(query)
+        
+        return {
+            "results": results
+        }
+        
+    except Exception as e:
+        print(f"Error in search: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e)}
+        )
 
 if __name__ == "__main__":
     import uvicorn

@@ -18,7 +18,7 @@ export default function Home() {
   return (
     <div className="min-h-screen relative">
       <Head>
-        <title>Fashion Perplexity | AI-Powered Fashion Recommendations</title>
+        <title>Fashion Search | AI-Powered Fashion Recommendations</title>
         <meta name="description" content="Get personalized fashion recommendations based on your style preferences and photos." />
         <link rel="icon" href="/favicon.ico" />
       </Head>

@@ -7,7 +7,7 @@ const Header: React.FC = () => {
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
         <Link href="/" className="text-2xl font-bold text-primary-700 flex items-center">
           <span className="mr-2">👗</span>
-          Fashion Perplexity
+          Fashion Search
         </Link>
         <nav>
           <ul className="flex space-x-6">
