@@ -2,6 +2,8 @@ import dotenv from 'dotenv'
 import fs from 'fs'
 import OpenAI from 'openai'
 import path from 'path'
+import { z } from 'zod'
+import { zodResponseFormat } from "openai/helpers/zod";
 
 // Load environment variables explicitly
 dotenv.config({ path: path.join(__dirname, '../../.env') })
@@ -26,10 +28,11 @@ const CLOTHING_CATEGORIES = [
   "accessories"
 ]
 
-interface Style {
+export interface Style {
   title: string
   description: string
   tags: string[]
+  image?: string
 }
 
 interface Item {
@@ -37,12 +40,12 @@ interface Item {
   category: string
 }
 
-interface StyleResponse {
+export interface StyleResponse {
   style: Style
   items: Item[]
 }
 
-interface UserAttributes {
+export interface UserAttributes {
   gender_presentation?: string
   apparent_age_range?: string
   body_type?: string
@@ -53,12 +56,36 @@ interface UserAttributes {
   avoid_styles?: string[]
 }
 
-interface UserInput {
+export interface UserInput {
   additional_info: string
   budget: string
   profile_photo_path?: string
   aesthetic_photo_paths?: string[]
 }
+
+const styleResponseSchema: z.ZodType<StyleResponse> = z.object({
+  style: z.object({
+    title: z.string(),
+    description: z.string(),
+    tags: z.array(z.string())
+  }),
+  items: z.array(z.object({
+    description: z.string(),
+    category: z.string()
+  }))
+});
+
+const userAttributesSchema: z.ZodType<UserAttributes> = z.object({
+  gender_presentation: z.string().optional(),
+  apparent_age_range: z.string().optional(),
+  body_type: z.string().optional(),
+  height_impression: z.string().optional(),
+  skin_tone: z.string().optional(),
+  style_suggestions: z.array(z.string()).optional(),
+  colors_to_complement: z.array(z.string()).optional(),
+  avoid_styles: z.array(z.string()).optional()
+});
+
 
 export async function analyzeUserPhotos(userPhotoPaths: string[]): Promise<UserAttributes> {
   if (!userPhotoPaths || userPhotoPaths.length === 0) {
@@ -105,10 +132,11 @@ export async function analyzeUserPhotos(userPhotoPaths: string[]): Promise<UserA
 
   try {
     const response = await client.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages,
       max_tokens: 800,
-      temperature: 0.5
+      temperature: 0.5,
+      response_format: zodResponseFormat(userAttributesSchema, "user_attributes")
     })
 
     const responseText = response.choices[0].message.content?.trim() || ""
@@ -243,19 +271,13 @@ User preferences:
     }
   }
 
-  // Call OpenAI API
   try {
-    // Use gpt-4o for vision capabilities when images are provided
-    // Use gpt-4o-mini when no images are provided (more cost-effective)
-    const hasImages = (profilePhotoPath !== undefined) || (aestheticPhotoPaths.length > 0)
-    const model = hasImages ? "gpt-4o" : "gpt-4o-mini"
-
     const response = await client.chat.completions.create({
-      model,
+      model: "gpt-4o-mini",
       messages,
       max_tokens: 800,
       temperature: 0.7,
-      response_format: { type: "json_object" }
+      response_format: zodResponseFormat(styleResponseSchema, "style_response")
     })
 
     const responseText = response.choices[0].message.content?.trim() || ""

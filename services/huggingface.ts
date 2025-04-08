@@ -1,25 +1,9 @@
 import { HfInference } from '@huggingface/inference'
+import { StyleResponse } from './openai'
 
 const hf = new HfInference(process.env.HUGGINGFACE_API_KEY)
 
-interface RecommendationsResponse {
-  style: {
-    description: string
-    image: string
-  }
-  items: Array<{
-    name: string
-    description: string
-    searchQuery: string
-  }>
-  colors: string[]
-  budget: {
-    range: string
-    tips: string[]
-  }
-}
-
-export async function generateStyleImage(recommendations: RecommendationsResponse): Promise<Buffer> {
+export async function generateStyleImage(recommendations: StyleResponse): Promise<Buffer> {
   if (!process.env.HUGGINGFACE_API_KEY) {
     throw new Error('HuggingFace API key is not configured')
   }

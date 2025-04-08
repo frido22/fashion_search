@@ -167,6 +167,10 @@ export default function ResultsPage() {
                 src={recommendation?.style?.image || 'https://picsum.photos/200/300'} 
                 alt="Style aesthetic" 
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Fallback if the image fails to load
+                  e.currentTarget.src = '/images/default-style.svg';
+                }}
               />
             </div>
             <div className="w-2/3 p-8">

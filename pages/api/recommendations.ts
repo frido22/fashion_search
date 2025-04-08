@@ -4,29 +4,12 @@ import { NextApiRequest, NextApiResponse } from 'next'
 import os from 'os'
 import path from 'path'
 import { generateStyleImage } from '../../services/huggingface'
-import { generateSearchQuery } from '../../services/openai'
+import { generateSearchQuery, UserInput } from '../../services/openai'
 
 export const config = {
   api: {
     bodyParser: false,
   },
-}
-
-interface RecommendationsResponse {
-  style: {
-    description: string
-    image: string
-  }
-  items: Array<{
-    name: string
-    description: string
-    searchQuery: string
-  }>
-  colors: string[]
-  budget: {
-    range: string
-    tips: string[]
-  }
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -76,18 +59,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
     
-    const userInput = {
+    const userInput: UserInput = {
       additional_info: additionalInfo,
       budget,
-      profile_photo_path: profilePhotoPath,
+      profile_photo_path: profilePhotoPath || undefined,
       aesthetic_photo_paths: aestheticPhotoPaths
     }
     
-    const recommendations = await generateSearchQuery(userInput) as RecommendationsResponse
-    const styleImage = await generateStyleImage(recommendations)
-    const base64Image = Buffer.from(styleImage).toString('base64')
+    const recommendations = await generateSearchQuery(userInput)
     
-    recommendations.style.image = `data:image/png;base64,${base64Image}`
+    let imageUrl = '';
+    try {
+      const styleImage = await generateStyleImage(recommendations)
+      const base64Image = Buffer.from(styleImage).toString('base64')
+      imageUrl = `data:image/png;base64,${base64Image}`
+    } catch (error) {
+      console.error('Error generating style image:', error)
+      // Use a default image when there's an error
+      imageUrl = '/images/default-style.svg'
+    }
+    
+    recommendations.style.image = imageUrl
     
     // Cleanup temporary files
     if (profilePhotoPath) {
