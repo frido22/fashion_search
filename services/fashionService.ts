@@ -9,7 +9,7 @@ interface StyleDescription {
   title: string;
   description: string;
   tags: string[];
-  image?: string;
+  image?: string | null;
 }
 
 export async function getFashionRecommendations(

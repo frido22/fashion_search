@@ -22,6 +22,7 @@ export default function ResultsPage() {
   const [categoryResults, setCategoryResults] = useState<Record<string, SearchResult[]>>({});
   const [errors, setErrors] = useState<ErrorState>({});
   const [isSearching, setIsSearching] = useState(false);
+  const [isImageLoading, setIsImageLoading] = useState(true);
   
   const categories = useMemo(() => 
     allCategories.filter((category: string) => 
@@ -36,6 +37,19 @@ export default function ResultsPage() {
       try {
         const parsedResults = JSON.parse(decodeURIComponent(resultsData as string));
         setRecommendation(parsedResults);
+        
+        // If the image is already available (including default image), don't show spinner
+        if (parsedResults.style?.image) {
+          setIsImageLoading(false);
+        } else {
+          // Set a timeout to stop the spinner after a reasonable time
+          // in case the image generation fails silently
+          const timeoutId = setTimeout(() => {
+            setIsImageLoading(false);
+          }, 10000); // 10 seconds timeout
+          
+          return () => clearTimeout(timeoutId);
+        }
       } catch (error) {
         setErrors(prev => ({ ...prev, parsing: "Failed to parse results data" }));
       } finally {
@@ -163,15 +177,23 @@ export default function ResultsPage() {
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <div className="flex">
             <div className="w-1/3 h-[240px]">
-              <img 
-                src={recommendation?.style?.image || 'https://picsum.photos/200/300'} 
-                alt="Style aesthetic" 
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  // Fallback if the image fails to load
-                  e.currentTarget.src = '/images/default-style.svg';
-                }}
-              />
+              {isImageLoading ? (
+                <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+                </div>
+              ) : (
+                <img 
+                  src={recommendation?.style?.image || '/images/default-style.svg'} 
+                  alt="Style aesthetic" 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Fallback if the image fails to load
+                    e.currentTarget.src = '/images/default-style.svg';
+                    setIsImageLoading(false);
+                  }}
+                  onLoad={() => setIsImageLoading(false)}
+                />
+              )}
             </div>
             <div className="w-2/3 p-8">
               <h3 className="text-2xl font-bold mb-4">{recommendation?.style.title}</h3>

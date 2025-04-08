@@ -48,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       fs.copyFileSync(photo.filepath, profilePhotoPath)
     }
     
-    const aestheticPhotoPaths = []
+    const aestheticPhotoPaths: string[] = []
     const inspirationFiles = Object.entries(files).filter(([key]) => key.startsWith('inspiration_images['))
     
     for (const [_, photo] of inspirationFiles) {
@@ -68,26 +68,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     const recommendations = await generateSearchQuery(userInput)
     
-    let imageUrl = '';
-    try {
-      const styleImage = await generateStyleImage(recommendations)
-      const base64Image = Buffer.from(styleImage).toString('base64')
-      imageUrl = `data:image/png;base64,${base64Image}`
-    } catch (error) {
-      console.error('Error generating style image:', error)
-      // Use a default image when there's an error
-      imageUrl = '/images/default-style.svg'
-    }
+    // Return recommendations immediately without waiting for image generation
+    recommendations.style.image = undefined
     
-    recommendations.style.image = imageUrl
-    
-    // Cleanup temporary files
-    if (profilePhotoPath) {
-      fs.unlinkSync(profilePhotoPath)
-    }
-    for (const path of aestheticPhotoPaths) {
-      fs.unlinkSync(path)
-    }
+    // Start image generation in the background
+    generateStyleImage(recommendations)
+      .then(styleImage => {
+        const base64Image = Buffer.from(styleImage).toString('base64')
+        recommendations.style.image = `data:image/png;base64,${base64Image}`
+      })
+      .catch(error => {
+        console.error('Error generating style image:', error)
+        recommendations.style.image = '/images/default-style.svg'
+      })
+      .finally(() => {
+        // Cleanup temporary files
+        if (profilePhotoPath) {
+          fs.unlinkSync(profilePhotoPath)
+        }
+        for (const path of aestheticPhotoPaths) {
+          fs.unlinkSync(path)
+        }
+      })
     
     return res.status(200).json(recommendations)
   } catch (error) {
